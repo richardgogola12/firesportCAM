@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="quality_entries">
+        <item>4K UHD (2160p)</item>
+        <item>Full HD (1080p)</item>
+        <item>HD (720p)</item>
+        <item>SD (480p)</item>
+        <item>Najvyššia dostupná</item>
+        <item>Najnižšia dostupná</item>
+    </string-array>
+    <string-array name="quality_values">
+        <item>UHD</item>
+        <item>FHD</item>
+        <item>HD</item>
+        <item>SD</item>
+        <item>HIGHEST</item>
+        <item>LOWEST</item>
+    </string-array>
+
+    <string-array name="fps_entries">
+        <item>Automaticky</item>
+        <item>24 fps</item>
+        <item>25 fps</item>
+        <item>30 fps</item>
+        <item>50 fps</item>
+        <item>60 fps</item>
+    </string-array>
+    <string-array name="fps_values">
+        <item>0</item>
+        <item>24</item>
+        <item>25</item>
+        <item>30</item>
+        <item>50</item>
+        <item>60</item>
+    </string-array>
+
+    <string-array name="bitrate_entries">
+        <item>Automaticky</item>
+        <item>4 Mbps</item>
+        <item>8 Mbps</item>
+        <item>12 Mbps</item>
+        <item>16 Mbps</item>
+        <item>24 Mbps</item>
+        <item>40 Mbps</item>
+        <item>60 Mbps</item>
+        <item>100 Mbps</item>
+    </string-array>
+    <string-array name="bitrate_values">
+        <item>0</item>
+        <item>4</item>
+        <item>8</item>
+        <item>12</item>
+        <item>16</item>
+        <item>24</item>
+        <item>40</item>
+        <item>60</item>
+        <item>100</item>
+    </string-array>
+
+    <string-array name="antibanding_entries">
+        <item>Automaticky</item>
+        <item>50 Hz (Európa)</item>
+        <item>60 Hz</item>
+        <item>Vypnuté</item>
+    </string-array>
+    <string-array name="antibanding_values">
+        <item>auto</item>
+        <item>50</item>
+        <item>60</item>
+        <item>off</item>
+    </string-array>
+
+    <string-array name="processing_entries">
+        <item>Predvolené</item>
+        <item>Vypnuté</item>
+        <item>Rýchle</item>
+        <item>Vysoká kvalita</item>
+    </string-array>
+    <string-array name="processing_values">
+        <item>default</item>
+        <item>off</item>
+        <item>fast</item>
+        <item>hq</item>
+    </string-array>
+
+    <string-array name="orientation_entries">
+        <item>Na šírku</item>
+        <item>Na šírku (otočené o 180°)</item>
+        <item>Na výšku</item>
+    </string-array>
+    <string-array name="orientation_values">
+        <item>landscape</item>
+        <item>reverse_landscape</item>
+        <item>portrait</item>
+    </string-array>
+
+    <string-array name="encoding_entries">
+        <item>UTF-8</item>
+        <item>Windows-1250 (stredoeurópske)</item>
+        <item>ISO-8859-2 (Latin-2)</item>
+        <item>ISO-8859-1 (Latin-1)</item>
+        <item>US-ASCII</item>
+    </string-array>
+    <string-array name="encoding_values">
+        <item>UTF-8</item>
+        <item>windows-1250</item>
+        <item>ISO-8859-2</item>
+        <item>ISO-8859-1</item>
+        <item>US-ASCII</item>
+    </string-array>
+
+    <string-array name="udp_mode_entries">
+        <item>Rovnaký text do oboch overlayov</item>
+        <item>Rozdeliť oddeľovačom (1. časť → overlay 1, 2. časť → overlay 2)</item>
+        <item>Podľa predpony správy (1:text / 2:text)</item>
+        <item>Iba do overlayu 1</item>
+        <item>Iba do overlayu 2</item>
+    </string-array>
+    <string-array name="udp_mode_values">
+        <item>same</item>
+        <item>split</item>
+        <item>prefix</item>
+        <item>only1</item>
+        <item>only2</item>
+    </string-array>
+</resources>
