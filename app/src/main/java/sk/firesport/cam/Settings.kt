@@ -32,6 +32,13 @@ object Prefs {
         if (!p.getBoolean("migrated_v2", false)) {
             p.edit().putString("orientation", "auto").putBoolean("migrated_v2", true).apply()
         }
+        if (!p.getBoolean("migrated_live", false)) {
+            // staré predvolené hodnoty náhľadu (640 px, 15 fps) → Full HD 30 fps video
+            val ed = p.edit().putBoolean("migrated_live", true)
+            if (p.getString("remote_width", "640") == "640") ed.putString("remote_width", "1920")
+            if (p.getString("remote_fps", "15") == "15") ed.putString("remote_fps", "30")
+            ed.apply()
+        }
     }
 
     fun str(p: SharedPreferences, key: String, def: String) = (p.getString(key, def) ?: def).trim()

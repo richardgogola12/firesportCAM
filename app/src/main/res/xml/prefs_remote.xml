@@ -55,21 +55,39 @@
         app:title="PIN" />
 
     <ListPreference
-        app:defaultValue="15"
+        app:defaultValue="h264"
+        app:entries="@array/remote_stream_entries"
+        app:entryValues="@array/remote_stream_values"
+        app:iconSpaceReserved="false"
+        app:key="remote_stream"
+        app:title="Druh živého obrazu"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="30"
         app:entries="@array/remote_fps_entries"
         app:entryValues="@array/remote_fps_values"
         app:iconSpaceReserved="false"
         app:key="remote_fps"
-        app:title="Plynulosť náhľadu"
+        app:title="Snímky za sekundu"
         app:useSimpleSummaryProvider="true" />
 
     <ListPreference
-        app:defaultValue="640"
+        app:defaultValue="1920"
         app:entries="@array/remote_width_entries"
         app:entryValues="@array/remote_width_values"
         app:iconSpaceReserved="false"
         app:key="remote_width"
-        app:title="Veľkosť náhľadu"
+        app:title="Rozlíšenie živého obrazu"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="0"
+        app:entries="@array/remote_bitrate_entries"
+        app:entryValues="@array/remote_bitrate_values"
+        app:iconSpaceReserved="false"
+        app:key="remote_bitrate"
+        app:title="Dátový tok videa (H.264)"
         app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 </PreferenceScreen>

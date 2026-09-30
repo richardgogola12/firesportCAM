@@ -172,7 +172,9 @@
         <item>10 snímok/s</item>
         <item>15 snímok/s (odporúčané)</item>
         <item>20 snímok/s</item>
-        <item>25 snímok/s (rýchla Wi-Fi)</item>
+        <item>25 snímok/s</item>
+        <item>30 snímok/s (odporúčané pre video)</item>
+        <item>60 snímok/s (kamera musí nahrávať 60 fps)</item>
     </string-array>
     <string-array name="remote_fps_values">
         <item>5</item>
@@ -180,19 +182,49 @@
         <item>15</item>
         <item>20</item>
         <item>25</item>
+        <item>30</item>
+        <item>60</item>
     </string-array>
 
     <string-array name="remote_width_entries">
         <item>Malá (480 px, najplynulejšia)</item>
         <item>Stredná (640 px)</item>
         <item>Veľká (960 px)</item>
-        <item>HD (1280 px)</item>
+        <item>HD 720p (1280 px)</item>
+        <item>Full HD 1080p (1920 px)</item>
     </string-array>
     <string-array name="remote_width_values">
         <item>480</item>
         <item>640</item>
         <item>960</item>
         <item>1280</item>
+        <item>1920</item>
+    </string-array>
+
+    <string-array name="remote_stream_entries">
+        <item>Video H.264 – Full HD, plynulé (odporúčané)</item>
+        <item>Obrázky MJPEG – starší spôsob, funguje všade</item>
+    </string-array>
+    <string-array name="remote_stream_values">
+        <item>h264</item>
+        <item>mjpeg</item>
+    </string-array>
+
+    <string-array name="remote_bitrate_entries">
+        <item>Automaticky (720p 5 Mb/s, 1080p 8 Mb/s, pri 60 fps viac)</item>
+        <item>4 Mb/s (slabšia Wi-Fi)</item>
+        <item>8 Mb/s</item>
+        <item>12 Mb/s</item>
+        <item>16 Mb/s</item>
+        <item>20 Mb/s (najvyššia kvalita)</item>
+    </string-array>
+    <string-array name="remote_bitrate_values">
+        <item>0</item>
+        <item>4</item>
+        <item>8</item>
+        <item>12</item>
+        <item>16</item>
+        <item>20</item>
     </string-array>
 
     <string-array name="camera_role_entries">

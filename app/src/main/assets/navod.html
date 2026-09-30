@@ -318,6 +318,24 @@ Videá z iných telefónov prenesieš do jedného cez <b>Galéria → Importova�
 <div class="warn">Do OBS ide <b>iba obraz</b> (s overlaymi), bez zvuku. Zvuk pridaj v OBS z mikrofónu pri počítači.
 Oneskorenie je asi 0,2–0,5 s. Obraz ide, iba kým je aplikácia na telefóne otvorená.</div>
 
+<h3>Živý obraz vo Full HD (30 / 60 fps)</h3>
+<p>V <b>Nastavenia → 🎥 Kamery a OBS</b> nastav <b>Druh živého obrazu: Video H.264</b>, <b>Rozlíšenie: Full HD</b>
+a <b>Snímky za sekundu: 30 alebo 60</b>. Webová stránka aj stránka <code>/obs</code> potom ukazujú plynulé video;
+ak ho prehliadač nevie prehrať, samy sa prepnú na obrázky (MJPEG).</p>
+<ul>
+  <li><b>OBS – najlepšia kvalita:</b> Zdroj → <b>Zdroj médií</b> (Media Source), zruš „Lokálny súbor“, do Vstupu daj
+  <code>http://IP_TELEFONU:8080/stream.ts</code>, sieťové vyrovnávanie 0–1 MB. Oneskorenie cca 0,5–1 s.</li>
+  <li><b>OBS cez prehliadač:</b> Zdroj → Prehliadač, URL <code>http://IP_TELEFONU:8080/obs</code>, 1920 × 1080.</li>
+  <li><b>VLC:</b> Médiá → Otvoriť sieťový tok → <code>http://IP_TELEFONU:8080/stream.ts</code>.</li>
+  <li><b>60 fps</b> je len vtedy, keď kamera nahráva 60 fps (🎬 Video → Snímky za sekundu). Full HD 60 potrebuje silnejší telefón a Wi-Fi 5 GHz alebo hotspot.</li>
+  <li>Ak obraz trhá, zníž Dátový tok na 4–8 Mb/s alebo rozlíšenie na 720p.</li>
+</ul>
+
+<h3>Čas aj na vedľajšej kamere</h3>
+<p>Na hlavnom telefóne nastav <b>Úloha: Hlavná</b>, na ostatných <b>Vedľajšia</b> a nechaj zapnuté
+<b>Posielať čas vedľajším kamerám</b>. Hlavná kamera prepošle časy z časomiery všetkým vedľajším v rovnakej sieti,
+takže overlay s časom majú aj ony – aj keď ich ESP-01 nevidí. Vedľajšie kamery musia mať zapnutý overlay a rovnaký UDP port (5000).</p>
+
 <h2 id="sutaz">14. Kontrolný zoznam pred súťažou</h2>
 <ol>
   <li>Nabitý telefón (ideálne powerbanka), dosť miesta (stavový riadok ukazuje minúty).</li>

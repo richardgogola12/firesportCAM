@@ -9,7 +9,7 @@ import java.io.File
 object ProfileStore {
 
     /** Kľúče, ktoré sa do profilu neukladajú. */
-    private val SKIP = setOf("migrated_v2", "profile_name", "_has_set_default_values")
+    private val SKIP = setOf("migrated_v2", "migrated_live", "profile_name", "_has_set_default_values")
 
     private fun dir(ctx: Context) = File(ctx.filesDir, "profiles").apply { mkdirs() }
 

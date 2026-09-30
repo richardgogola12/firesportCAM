@@ -449,10 +449,22 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
             if (ips.isEmpty()) "Telefón nie je pripojený k sieti" else ips.joinToString("\n") { "http://$it:$port" }
         ))
         cat.add(info(
-            "OBS (živé vysielanie)",
+            "OBS – najlepšia kvalita (Full HD, 30/60 fps)",
+            if (ips.isEmpty()) "Telefón nie je pripojený k sieti"
+            else "Zdroj → Zdroj médií (Media Source) → zruš „Lokálny súbor“, Vstup:\n" +
+                ips.joinToString("\n") { "http://$it:$port/stream.ts" } +
+                "\nFormát vstupu nechaj prázdny, Sieťové vyrovnávanie 0–1 MB. Oneskorenie cca 0,5–1 s."
+        ))
+        cat.add(info(
+            "OBS – cez prehliadač",
             if (ips.isEmpty()) "Telefón nie je pripojený k sieti"
             else "Zdroj → Prehliadač (Browser Source), URL:\n" + ips.joinToString("\n") { "http://$it:$port/obs" } +
-                "\nŠírka 1280, výška 720. Iba obraz – zvuk pridaj v OBS z mikrofónu."
+                "\nŠírka 1920, výška 1080. Iba obraz – zvuk pridaj v OBS z mikrofónu."
+        ))
+        cat.add(info(
+            "60 fps",
+            "Živý obraz má 60 fps len vtedy, keď kamera beží na 60 fps (🎬 Video → Snímky za sekundu: 60). " +
+                "Full HD 60 potrebuje silnejší telefón a dobrú Wi-Fi (5 GHz alebo hotspot)."
         ))
         cat.add(info(
             "Postup",

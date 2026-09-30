@@ -31,6 +31,14 @@ class RemoteServer(
 
         /** Príkaz: rec, stop, toggle, mark. @return odpoveď pre používateľa */
         fun command(cmd: String, arg: String): String
+
+        /** "h264" = video Full HD (odporúčané), "mjpeg" = obrázky. */
+        fun streamMode(): String
+
+        /** Kodér živého obrazu H.264 alebo null (kamera nebeží). */
+        fun liveEncoder(): LiveEncoder?
+
+        fun liveFps(): Int
     }
 
     @Volatile private var running = false
@@ -103,11 +111,15 @@ class RemoteServer(
 
             val authorized = pin.isEmpty() || query["pin"] == pin
             when (path) {
-                "/", "/index.html" -> send(out, 200, "text/html; charset=utf-8", page().toByteArray(Charsets.UTF_8))
-                "/obs" -> send(out, 200, "text/html; charset=utf-8", obsPage(query["pin"] ?: "").toByteArray(Charsets.UTF_8))
+                "/", "/index.html" -> send(out, 200, "text/html; charset=utf-8", page(query["mode"] ?: handler.streamMode()).toByteArray(Charsets.UTF_8))
+                "/obs" -> send(out, 200, "text/html; charset=utf-8", obsPage(query["pin"] ?: "", query["mode"] ?: handler.streamMode()).toByteArray(Charsets.UTF_8))
                 "/status" -> if (authorized) send(out, 200, "application/json; charset=utf-8", handler.statusJson().toByteArray(Charsets.UTF_8))
                 else send(out, 403, "application/json", "{\"error\":\"pin\"}".toByteArray())
                 "/stream.mjpg" -> if (authorized) stream(s, out)
+                else send(out, 403, "text/plain", "pin".toByteArray())
+                "/stream.ts", "/live.ts" -> if (authorized) liveTs(s, out)
+                else send(out, 403, "text/plain", "pin".toByteArray())
+                "/live.mp4" -> if (authorized) liveMp4(s, out)
                 else send(out, 403, "text/plain", "pin".toByteArray())
                 "/snapshot.jpg" -> {
                     val img = if (authorized) frame(100) else null
@@ -142,7 +154,7 @@ class RemoteServer(
         var lastSent: ByteArray? = null
         while (running) {
             val t0 = System.currentTimeMillis()
-            val interval = 1000L / handler.streamFps().coerceIn(1, 30)
+            val interval = 1000L / handler.streamFps().coerceIn(1, 60)
             val img = frame(interval)
             if (img != null && img !== lastSent) {
                 out.write(
@@ -156,6 +168,60 @@ class RemoteServer(
             }
             val wait = interval - (System.currentTimeMillis() - t0)
             if (wait > 0) Thread.sleep(wait)
+        }
+    }
+
+    private fun head(out: OutputStream, type: String, extra: String = "") {
+        out.write(
+            ("HTTP/1.1 200 OK\r\n" +
+                "Content-Type: $type\r\n" +
+                "Cache-Control: no-store\r\n" + extra +
+                "Connection: close\r\n\r\n").toByteArray(Charsets.US_ASCII)
+        )
+        out.flush()
+    }
+
+    /** Živý obraz H.264 v MPEG-TS – OBS „Zdroj médií“, VLC. */
+    private fun liveTs(s: Socket, out: OutputStream) {
+        val enc = handler.liveEncoder() ?: return send(out, 503, "text/plain", "camera off".toByteArray())
+        s.soTimeout = 0
+        val c = enc.addClient()
+        try {
+            head(out, "video/mp2t")
+            val mux = TsMuxer()
+            while (running && !c.reset) {
+                val f = c.queue.poll(1, java.util.concurrent.TimeUnit.SECONDS) ?: continue
+                out.write(mux.frame(f, enc.sps, enc.pps))
+                out.flush()
+            }
+        } finally {
+            enc.removeClient(c)
+        }
+    }
+
+    /** Živý obraz H.264 vo fragmentovanom MP4 – prehliadač (Media Source Extensions). */
+    private fun liveMp4(s: Socket, out: OutputStream) {
+        val enc = handler.liveEncoder() ?: return send(out, 503, "text/plain", "camera off".toByteArray())
+        s.soTimeout = 0
+        val c = enc.addClient()
+        try {
+            if (!enc.awaitConfig(5000)) {
+                send(out, 503, "text/plain", "encoder".toByteArray())
+                return
+            }
+            val sps = enc.sps ?: return
+            val pps = enc.pps ?: return
+            val mux = Fmp4Muxer(sps, pps, enc.width, enc.height, handler.liveFps())
+            head(out, "video/mp4", "X-Codec: ${mux.codec}\r\nX-Size: ${enc.width}x${enc.height}\r\nAccess-Control-Expose-Headers: X-Codec, X-Size\r\n")
+            out.write(mux.init())
+            out.flush()
+            while (running && !c.reset) {
+                val f = c.queue.poll(1, java.util.concurrent.TimeUnit.SECONDS) ?: continue
+                out.write(mux.fragment(f))
+                out.flush()
+            }
+        } finally {
+            enc.removeClient(c)
         }
     }
 
@@ -174,7 +240,7 @@ class RemoteServer(
 
     private fun send(out: OutputStream, code: Int, type: String, body: ByteArray) {
         val status = when (code) {
-            200 -> "OK"; 403 -> "Forbidden"; 404 -> "Not Found"; else -> "Error"
+            200 -> "OK"; 403 -> "Forbidden"; 404 -> "Not Found"; 503 -> "Service Unavailable"; else -> "Error"
         }
         val head = "HTTP/1.1 $code $status\r\n" +
             "Content-Type: $type\r\n" +
@@ -186,25 +252,68 @@ class RemoteServer(
         out.flush()
     }
 
+
+    /** Prehrávač H.264 (MSE) s automatickým návratom na MJPEG. */
+    private val playerJs = """
+function fsPlay(video,q,onFallback){
+ if(!window.MediaSource||!MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01F"')){onFallback();return}
+ let played=false,done=false,lastT=-1,stall=0;const ctrl=new AbortController();
+ const ms=new MediaSource();video.src=URL.createObjectURL(ms);
+ function end(){if(done)return;done=true;clearInterval(wd);try{ctrl.abort()}catch(e){}
+  if(played)setTimeout(function(){fsPlay(video,q,onFallback)},800);else onFallback();}
+ ms.addEventListener('sourceopen',async function(){
+  try{
+   const r=await fetch('/live.mp4?'+q+'&t='+Date.now(),{signal:ctrl.signal});
+   if(!r.ok){end();return}
+   const codec=r.headers.get('X-Codec')||'avc1.42E01F';
+   const sb=ms.addSourceBuffer('video/mp4; codecs="'+codec+'"');
+   const queue=[];
+   function pump(){
+    if(sb.updating||!queue.length)return;
+    try{if(video.buffered.length&&video.currentTime-video.buffered.start(0)>20){sb.remove(video.buffered.start(0),video.currentTime-5);return}}catch(e){}
+    let n=0;for(const c of queue)n+=c.length;const b=new Uint8Array(n);let o=0;
+    while(queue.length){const c=queue.shift();b.set(c,o);o+=c.length}
+    try{sb.appendBuffer(b)}catch(e){end()}
+   }
+   sb.addEventListener('updateend',function(){
+    if(video.buffered.length){const e=video.buffered.end(video.buffered.length-1);
+     if(e-video.currentTime>0.5)video.currentTime=Math.max(e-0.1,0);}
+    if(video.paused)video.play().catch(function(){});
+    pump();
+   });
+   const rd=r.body.getReader();
+   for(;;){const x=await rd.read();if(x.done)break;queue.push(x.value);pump();}
+   end();
+  }catch(e){end()}
+ });
+ const wd=setInterval(function(){
+  if(video.currentTime>0.2)played=true;
+  if(video.currentTime===lastT){if(++stall>=6)end()}else{stall=0;lastT=video.currentTime}
+ },1000);
+}
+"""
+
     /** Čistý obraz na celú plochu – pre OBS (Zdroj prehliadača / Browser Source). */
-    private fun obsPage(pinValue: String): String {
+    private fun obsPage(pinValue: String, mode: String): String {
         val q = if (pinValue.isEmpty()) "" else "pin=" + java.net.URLEncoder.encode(pinValue, "UTF-8") + "&"
         return """
 <!doctype html>
 <html><head><meta charset="utf-8"><title>Firesport Cam – OBS</title>
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}
-img{width:100%;height:100%;object-fit:contain;display:block}</style></head>
-<body><img id="v" alt="">
+img,video{width:100%;height:100%;object-fit:contain;display:block}</style></head>
+<body><video id="vid" muted autoplay playsinline></video><img id="v" alt="" style="display:none">
 <script>
- const v=document.getElementById('v');
+$playerJs
+ const v=document.getElementById('v'),vid=document.getElementById('vid');
+ function mjpeg(){vid.style.display='none';v.style.display='block';start();}
  function start(){v.src='/stream.mjpg?${q}t='+Date.now();}
- v.onerror=()=>setTimeout(start,1000);
- start();
+ v.onerror=function(){setTimeout(start,1000)};
+ if('$mode'==='h264')fsPlay(vid,'${q}x=1',mjpeg);else mjpeg();
 </script></body></html>
 """.trimIndent()
     }
 
-    private fun page(): String = """
+    private fun page(mode: String): String = """
 <!doctype html>
 <html lang="sk"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -223,20 +332,22 @@ img{width:100%;height:100%;object-fit:contain;display:block}</style></head>
 <header>🔥 Firesport Cam – diaľkové ovládanie</header>
 <main>
  <div id="state">Pripájam…</div>
- <img id="img" alt="náhľad">
+ <video id="vid" muted autoplay playsinline style="width:100%;background:#000;border-radius:8px;display:block"></video>
+ <img id="img" alt="náhľad" style="display:none">
+ <div class="small" id="mode"></div>
  <div class="row">
   <button id="rec" onclick="cmd('rec')">⏺ Nahrávať</button>
   <button id="stop" onclick="cmd('stop')">⏹ Stop</button>
   <button id="mark" onclick="cmd('mark')">📍 Značka</button>
   <button id="clr" onclick="cmd('clear')">✕ Vymazať čas</button>
  </div>
- <div class="small">PIN (ak je nastavený): <input id="pin" type="password" oninput="savePin()"></div>
+ <div class="small">PIN (ak je nastavený): <input id="pin" type="password" onchange="savePin()"></div>
  <div class="small" id="info"></div>
 </main>
 <script>
  const pinEl=document.getElementById('pin');
  try{pinEl.value=localStorage.getItem('fs_pin')||''}catch(e){}
- function savePin(){try{localStorage.setItem('fs_pin',pinEl.value)}catch(e){};img()}
+ function savePin(){try{localStorage.setItem('fs_pin',pinEl.value)}catch(e){};location.reload()}
  function q(){return 'pin='+encodeURIComponent(pinEl.value)}
  function cmd(c){fetch('/cmd?c='+c+'&'+q()).then(r=>r.text()).then(t=>{document.getElementById('info').textContent=t})}
  function poll(){
@@ -245,11 +356,26 @@ img{width:100%;height:100%;object-fit:contain;display:block}</style></head>
    document.getElementById('state').innerHTML=(s.recording?'🔴 NAHRÁVA '+s.duration:'⚪ '+s.state)+'<br><span class="small">'+s.info+'</span>';
   }).catch(()=>{document.getElementById('state').textContent='Bez spojenia'});
  }
+ $playerJs
+ let mjpegOn=false;
  function img(){
+  if(!mjpegOn&&MODE==='h264'){startVideo();return}
   const i=document.getElementById('img');
   i.onerror=()=>setTimeout(img,1500);
   i.src='/stream.mjpg?'+q()+'&t='+Date.now();
  }
+ function startVideo(){
+  document.getElementById('mode').innerHTML='Obraz: video H.264 · <a href="/?mode=mjpeg" style="color:#9cf">prepnúť na obrázky (MJPEG)</a>';
+  fsPlay(document.getElementById('vid'),q(),function(){
+   mjpegOn=true;document.getElementById('vid').style.display='none';
+   document.getElementById('img').style.display='block';
+   document.getElementById('mode').textContent='Obraz: obrázky (MJPEG) – prehliadač nepodporuje video alebo sa nenačítalo';
+   img();
+  });
+ }
+ const MODE='$mode';
+ if(MODE!=='h264'){mjpegOn=true;document.getElementById('vid').style.display='none';document.getElementById('img').style.display='block';
+  document.getElementById('mode').innerHTML='Obraz: obrázky (MJPEG) · <a href="/?mode=h264" style="color:#9cf">skúsiť video Full HD</a>';}
  setInterval(poll,1000);poll();img();
 </script>
 </body></html>

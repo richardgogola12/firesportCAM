@@ -24,6 +24,11 @@ Požiadavky: Android 8.0+ (API 26).
 
 - **Čas aj na vedľajšej kamere:** hlavná kamera preposiela časy a príkazy z časomiery vedľajším (Kamery a OBS → Posielať čas vedľajším kamerám).
 
+## Novinky vo verzii 2.6
+
+- **Živý obraz Full HD 30/60 fps** – hardvérové video H.264 namiesto obrázkov: web a `/obs` (prehliadač, MSE), OBS Zdroj médií / VLC cez `http://IP:8080/stream.ts`. Automatický návrat na MJPEG.
+- Nové nastavenia: druh živého obrazu, rozlíšenie až 1920 px, 30/60 fps, dátový tok.
+
 ## Novinky vo verzii 2.5
 
 - **Verdikty pokusov:** OK (úspešný), NP (nedokončený), D (diskvalifikovaný), NA (ešte nebežali). Rýchla voľba po pokuse, UDP `VERDIKT:D`, skratky v Nastavenia → Ostatné.

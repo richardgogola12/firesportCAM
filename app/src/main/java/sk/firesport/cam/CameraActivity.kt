@@ -74,7 +74,7 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalCamera2Interop::class)
 class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener,
-    PacketListener, RecordingManager.Callback, RemoteServer.Handler {
+    PacketListener, RecordingManager.Callback, RemoteServer.Handler, LiveEncoder.Host {
 
     companion object {
         private const val TAG = "FiresportCam"
@@ -257,6 +257,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         udp = null
         remote?.stop()
         remote = null
+        live?.shutdown()
+        live = null
     }
 
     override fun onResume() {
@@ -574,6 +576,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     private fun startRemote() {
         remote?.stop()
         remote = null
+        live?.shutdown()
+        live = null
         if (!prefs.getBoolean("remote_enabled", false)) return
         val port = Prefs.int(prefs, "remote_port", 8080).takeIf { it in 1024..65535 } ?: 8080
         remote = RemoteServer(port, Prefs.str(prefs, "remote_pin", ""), this).also { it.start() }
@@ -666,7 +670,65 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     }
 
     /** Snímky za sekundu pre stream. */
-    override fun streamFps(): Int = Prefs.int(prefs, "remote_fps", 15).coerceIn(1, 30)
+    override fun streamFps(): Int = Prefs.int(prefs, "remote_fps", 15).coerceIn(1, 60)
+
+    // ------------------------------------------------------------------ živý obraz H.264 (Full HD)
+
+    @Volatile private var live: LiveEncoder? = null
+    private val liveSrc = arrayOfNulls<Bitmap>(2)
+
+    override fun streamMode(): String = prefs.getString("remote_stream", "h264") ?: "h264"
+
+    override fun liveEncoder(): LiveEncoder? {
+        if (!activityStarted && !rec.isBusy) return null
+        synchronized(this) {
+            return live ?: LiveEncoder(this).also { live = it }
+        }
+    }
+
+    override fun liveFps(): Int = Prefs.int(prefs, "remote_fps", 30).coerceIn(5, 60)
+
+    override fun liveBitrate(): Int = Prefs.int(prefs, "remote_bitrate", 0).coerceIn(0, 50) * 1_000_000
+
+    /** Snímok náhľadu (s overlaymi) v cieľovom rozlíšení – dlhšia strana = „Veľkosť náhľadu“. */
+    override fun liveCapture(slot: Int): LiveFrame? {
+        if (!activityStarted) return null
+        val targetLong = Prefs.int(prefs, "remote_width", 1920).coerceIn(480, 1920)
+        val latch = CountDownLatch(1)
+        var result: LiveFrame? = null
+        mainHandler.post {
+            try {
+                val tv = findTexture(previewView)
+                val vw = previewView.width
+                val vh = previewView.height
+                val crop = contentRect()
+                if (tv != null && tv.isAvailable && vw > 0 && vh > 0 && crop.width() > 1f && crop.height() > 1f) {
+                    val sc = (targetLong / maxOf(crop.width(), crop.height())).coerceAtMost(2.5f)
+                    val outW = ((crop.width() * sc).toInt() and 1.inv()).coerceAtLeast(2)
+                    val outH = ((crop.height() * sc).toInt() and 1.inv()).coerceAtLeast(2)
+                    val sw = (vw * sc).toInt().coerceAtLeast(1)
+                    val sh = (vh * sc).toInt().coerceAtLeast(1)
+                    var src = liveSrc[slot]
+                    if (src == null || src.width != sw || src.height != sh) {
+                        src?.recycle()
+                        src = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888)
+                        liveSrc[slot] = src
+                    }
+                    tv.getBitmap(src!!)
+                    val m = android.graphics.Matrix()
+                    m.setScale(1f / sc, 1f / sc)
+                    m.postConcat(tv.getTransform(null))
+                    m.postScale(sc, sc)
+                    m.postTranslate(-crop.left * sc, -crop.top * sc)
+                    result = LiveFrame(src, m, outW, outH)
+                }
+            } catch (_: Exception) {
+            }
+            latch.countDown()
+        }
+        if (!latch.await(500, TimeUnit.MILLISECONDS)) return null
+        return result
+    }
 
     override fun command(cmd: String, arg: String): String {
         val latch = CountDownLatch(1)
@@ -769,7 +831,22 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             .addCameraFilter { list -> list.filter { camId(it) == targetId } }
             .build()
 
-        val preview = Preview.Builder().build()
+        val pb = Preview.Builder()
+        if (prefs.getBoolean("remote_enabled", false) && Prefs.int(prefs, "remote_width", 640) >= 1280) {
+            // živý obraz v HD / Full HD potrebuje náhľad v plnom rozlíšení
+            pb.setResolutionSelector(
+                androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                    .setAspectRatioStrategy(androidx.camera.core.resolutionselector.AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY)
+                    .setResolutionStrategy(
+                        androidx.camera.core.resolutionselector.ResolutionStrategy(
+                            android.util.Size(1920, 1080),
+                            androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER
+                        )
+                    )
+                    .build()
+            )
+        }
+        val preview = pb.build()
         preview.setSurfaceProvider(previewView.surfaceProvider)
         this.preview = preview
 
