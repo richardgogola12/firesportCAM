@@ -2,7 +2,11 @@ name: Build APK
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -24,9 +28,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Build APK
+        shell: bash
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug assembleRelease --stacktrace
+          set -o pipefail
+          ./gradlew assembleDebug assembleRelease --stacktrace --console=plain 2>&1 | tee build.log
 
       - uses: actions/upload-artifact@v5
         with:
@@ -34,3 +40,17 @@ jobs:
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
+
+      # Pri chybe uloží výpis zostavenia do vetvy ci-log (na diagnostiku)
+      - name: Uložiť výpis chyby
+        if: failure()
+        shell: bash
+        run: |
+          mkdir -p /tmp/cilog && cp build.log /tmp/cilog/build.log || echo "no log" > /tmp/cilog/build.log
+          grep -nE "^e: |error:|ERROR|What went wrong|FAILURE|AAPT|Unresolved|Exception" /tmp/cilog/build.log | head -200 > /tmp/cilog/errors.txt || true
+          cd /tmp/cilog
+          git init -q -b ci-log
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -A && git commit -q -m "build log ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-log
