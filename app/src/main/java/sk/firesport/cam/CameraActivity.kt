@@ -303,7 +303,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             k.startsWith("cmd_") || k == "event_name" || k == "profile_name" ||
             k == "team_name" || k == "camera_name" || k == "clear_mode"
         ) OverlayState.load(sp)
-        if (key == null || k == "team_name" || k == "event_name") updateTeamLabel()
+        if (key == null || k == "team_name" || k == "event_name" || k == "attempt_numbering" || k.startsWith("attempt_reset")) updateTeamLabel()
         if (key == null || k.startsWith("preroll")) rec.refresh()
     }
 
@@ -404,6 +404,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
                 "stop" -> rec.stopUser()
                 "mark" -> rec.addMarker(arg)
                 "team" -> setTeam(arg, fromRemote = true)
+                "reset" -> resetAttempts(arg.ifEmpty { null }, fromRemote = true)
             }
         }
     }
@@ -1171,16 +1172,43 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         labels.add("➕ Nové družstvo…")
         labels.add("Bez družstva")
         labels.addAll(teams)
+        labels.add("🔄 Vynulovať počítadlo pokusov…")
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Družstvo pre ďalší pokus")
             .setItems(labels.toTypedArray()) { _, w ->
-                when (w) {
-                    0 -> newTeamDialog()
-                    1 -> setTeam("")
+                when {
+                    w == 0 -> newTeamDialog()
+                    w == 1 -> setTeam("")
+                    w == labels.size - 1 -> resetAttemptsDialog()
                     else -> setTeam(teams[w - 2])
                 }
             }
             .show()
+    }
+
+    /** Vynulovanie počítadla pokusov – ďalší pokus bude opäť 1. */
+    private fun resetAttemptsDialog() {
+        val team = Prefs.str(prefs, "team_name", "")
+        val options = ArrayList<String>()
+        if (team.isNotEmpty()) options.add("Len družstvo „$team“")
+        options.add("Všetky družstvá")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Vynulovať počítadlo pokusov")
+            .setItems(options.toTypedArray()) { _, w ->
+                val onlyTeam = team.isNotEmpty() && w == 0
+                resetAttempts(if (onlyTeam) team else null)
+            }
+            .setNegativeButton("Zrušiť", null)
+            .show()
+    }
+
+    private fun resetAttempts(team: String?, fromRemote: Boolean = false) {
+        Teams.resetCounter(prefs, team)
+        updateTeamLabel()
+        if (!fromRemote && isMaster()) {
+            CamLink.send(udpPort(), if (team == null) OverlayState.cmdReset else "${OverlayState.cmdReset}:$team")
+        }
+        toast(if (team == null) "Pokusy všetkých družstiev sa rátajú znova od 1" else "Pokusy „$team“ sa rátajú znova od 1")
     }
 
     private fun newTeamDialog() {

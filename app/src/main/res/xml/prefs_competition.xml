@@ -38,6 +38,27 @@
             app:summary="napr. Dolany_16-84_2.pokus_20260929_101500.mp4"
             app:title="Pomenovať video podľa družstva a času" />
 
+        <ListPreference
+            app:defaultValue="day"
+            app:entries="@array/attempt_numbering_entries"
+            app:entryValues="@array/attempt_numbering_values"
+            app:iconSpaceReserved="false"
+            app:key="attempt_numbering"
+            app:title="Číslovanie pokusov"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="attempt_reset"
+            app:title="🔄 Vynulovať počítadlo pokusov" />
+
+        <EditTextPreference
+            app:defaultValue="RESET"
+            app:iconSpaceReserved="false"
+            app:key="cmd_reset"
+            app:title="UDP príkaz na vynulovanie pokusov (RESET, RESET:družstvo)"
+            app:useSimpleSummaryProvider="true" />
+
         <EditTextPreference
             app:defaultValue="TEAM"
             app:iconSpaceReserved="false"

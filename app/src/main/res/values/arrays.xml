@@ -214,4 +214,14 @@
         <item>hide</item>
         <item>default</item>
     </string-array>
+    <string-array name="attempt_numbering_entries">
+        <item>Každý deň od 1</item>
+        <item>Od posledného vynulovania</item>
+        <item>Priebežne v celej súťaži</item>
+    </string-array>
+    <string-array name="attempt_numbering_values">
+        <item>day</item>
+        <item>reset</item>
+        <item>event</item>
+    </string-array>
 </resources>

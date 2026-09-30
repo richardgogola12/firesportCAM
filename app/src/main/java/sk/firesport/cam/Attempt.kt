@@ -151,12 +151,54 @@ object Teams {
         }
     }
 
-    /** Ďalšie číslo pokusu družstva v danej súťaži. */
+    /** Režim číslovania: "day" = každý deň od 1, "reset" = od posledného vynulovania, "event" = celá súťaž. */
+    fun numberingMode(p: android.content.SharedPreferences): String =
+        p.getString("attempt_numbering", "day") ?: "day"
+
+    private fun teamKey(team: String) = "attempt_reset_team_" + team.trim().lowercase()
+
+    /** Vynuluje počítadlo – pre jedno družstvo alebo (team == null) pre všetky. */
+    fun resetCounter(p: android.content.SharedPreferences, team: String? = null) {
+        val now = System.currentTimeMillis()
+        val ed = p.edit()
+        if (team.isNullOrBlank()) {
+            ed.putLong("attempt_reset_at", now)
+            // globálne vynulovanie ruší staršie vynulovania jednotlivých družstiev
+            p.all.keys.filter { it.startsWith("attempt_reset_team_") }.forEach { ed.remove(it) }
+        } else {
+            ed.putLong(teamKey(team), now)
+        }
+        ed.apply()
+    }
+
+    private fun startOfToday(): Long {
+        val c = java.util.Calendar.getInstance()
+        c.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        c.set(java.util.Calendar.MINUTE, 0)
+        c.set(java.util.Calendar.SECOND, 0)
+        c.set(java.util.Calendar.MILLISECOND, 0)
+        return c.timeInMillis
+    }
+
+    /** Od kedy sa rátajú pokusy družstva (epoch ms). */
+    fun countFrom(p: android.content.SharedPreferences, team: String): Long {
+        var from = maxOf(p.getLong("attempt_reset_at", 0L), p.getLong(teamKey(team), 0L))
+        if (numberingMode(p) == "day") from = maxOf(from, startOfToday())
+        return from
+    }
+
+    /** Ďalšie číslo pokusu družstva v danej súťaži (od vynulovania / od začiatku dňa). */
     fun nextAttemptNo(ctx: android.content.Context, event: String, team: String): Int {
         if (team.isEmpty()) return 0
+        val p = androidx.preference.PreferenceManager.getDefaultSharedPreferences(ctx)
+        val from = countFrom(p, team)
         val count = VideoStore.list(ctx)
             .filter { VideoStore.eventOf(ctx, it) == VideoStore.safeName(event) }
-            .count { Sidecars.loadInfo(it)?.team.equals(team, ignoreCase = true) }
+            .count { f ->
+                val info = Sidecars.loadInfo(f) ?: return@count false
+                val t = if (info.startEpochMs > 0) info.startEpochMs else f.lastModified()
+                info.team.equals(team, ignoreCase = true) && t >= from
+            }
         return count + 1
     }
 }

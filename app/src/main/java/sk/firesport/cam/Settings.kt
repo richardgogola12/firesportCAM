@@ -160,6 +160,7 @@ object OverlayState {
     @Volatile var cmdMark = "MARK"
     @Volatile var cmdTeam = "TEAM"
     @Volatile var cmdClear = "CLEAR"
+    @Volatile var cmdReset = "RESET"
     /** "hide" = po vymazaní overlay skryť, "default" = zobraziť predvolený text. */
     @Volatile var clearMode = "hide"
 
@@ -204,6 +205,7 @@ object OverlayState {
         cmdMark = Prefs.str(p, "cmd_mark", "MARK")
         cmdTeam = Prefs.str(p, "cmd_team", "TEAM")
         cmdClear = Prefs.str(p, "cmd_clear", "CLEAR")
+        cmdReset = Prefs.str(p, "cmd_reset", "RESET")
         clearMode = p.getString("clear_mode", "hide") ?: "hide"
         teamName = Prefs.str(p, "team_name", "")
         cameraName = Prefs.str(p, "camera_name", "")
@@ -388,6 +390,10 @@ object OverlayState {
                 cmdClear.isNotEmpty() && t.startsWith("$cmdClear:", ignoreCase = true) -> {
                     val n = t.substring(cmdClear.length + 1).trim().toIntOrNull()
                     clear(if (n != null && n in 1..TEXT_OVERLAYS) n - 1 else null); return
+                }
+                matches(t, cmdReset) -> { listener?.onCommand("reset", ""); return }
+                cmdReset.isNotEmpty() && t.startsWith("$cmdReset:", ignoreCase = true) -> {
+                    listener?.onCommand("reset", t.substring(cmdReset.length + 1).trim()); return
                 }
                 cmdTeam.isNotEmpty() && t.startsWith("$cmdTeam:", ignoreCase = true) -> {
                     listener?.onCommand("team", t.substring(cmdTeam.length + 1).trim()); return

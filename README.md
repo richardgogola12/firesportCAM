@@ -20,6 +20,11 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.4
+
+- **Počítadlo pokusov sa dá vynulovať** – v kamere (Družstvo → 🔄), v nastaveniach Súťaže alebo UDP príkazom `RESET` / `RESET:družstvo`.
+- **Číslovanie pokusov:** každý deň od 1 (predvolené), od posledného vynulovania, alebo priebežne v celej súťaži.
+
 ## Novinky vo verzii 2.3
 - vymazanie času z UDP: tlačidlo v kamere, na webe a príkaz CLEAR / CLEAR:1
 - automatické vyhľadanie telefónu – vysielač (ESP01) nemusí poznať IP telefónu

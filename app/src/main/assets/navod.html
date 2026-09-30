@@ -238,6 +238,18 @@ a neskôr ich jedným ťuknutím načítaš. Názov aktívneho profilu je v stav
 </ol>
 <p>Video sa uloží s názvom podľa družstva, výsledného času a pokusu, napr.
 <code>Dolany_16-84_2.pokus_20260929_101500.mp4</code>. V overlayoch môžeš použiť <code>{druzstvo}</code> a <code>{pokus}</code>.</p>
+
+<h3>Počítadlo pokusov</h3>
+<p>V <b>Nastavenia → 🏆 Súťaž → Číslovanie pokusov</b> vyberieš, ako sa pokusy rátajú:</p>
+<ul>
+  <li><b>Každý deň od 1</b> (predvolené) – na ďalší deň tréningu začína každé družstvo znova 1. pokusom.</li>
+  <li><b>Od posledného vynulovania</b> – ráta sa, kým počítadlo sám nevynuluješ.</li>
+  <li><b>Priebežne v celej súťaži</b> – pokusy sa číslujú stále ďalej.</li>
+</ul>
+<p>Vynulovať sa dá kedykoľvek: v kamere ťukni na <b>Družstvo → 🔄 Vynulovať počítadlo pokusov</b>
+(len aktuálne družstvo alebo všetky), v nastaveniach tlačidlom <b>🔄 Vynulovať počítadlo pokusov</b>,
+alebo UDP príkazom <code>RESET</code> (všetky) / <code>RESET:Dolany</code> (jedno družstvo).
+Hlavná kamera vynulovanie pošle aj vedľajším. Nahrané videá ostanú bez zmeny.</p>
 <h3>Výsledková tabuľka</h3>
 <p>Galéria → <b>Výsledky</b> (alebo ⚙ → 🏆 Súťaž). Pokusy sú zoradené podľa výsledného času – horšieho z časov
 ľavého a pravého terča. Ťuknutím na riadok prehráš pokus, <b>podržaním opravíš</b> družstvo, čas alebo zadáš

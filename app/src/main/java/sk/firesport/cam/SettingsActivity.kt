@@ -176,6 +176,29 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
                 }
                 findPreference<EditTextPreference>("team_name")?.summaryProvider =
                     Preference.SummaryProvider<EditTextPreference> { p -> p.text?.ifEmpty { null } ?: "(žiadne)" }
+                findPreference<Preference>("attempt_reset")?.apply {
+                    fun refresh() {
+                        val at = preferenceManager.sharedPreferences?.getLong("attempt_reset_at", 0L) ?: 0L
+                        summary = "Ďalší pokus každého družstva bude opäť 1." +
+                            if (at > 0) "\nPosledné vynulovanie: " +
+                                java.text.SimpleDateFormat("d.M.yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(at))
+                            else ""
+                    }
+                    refresh()
+                    setOnPreferenceClickListener {
+                        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("Vynulovať počítadlo pokusov?")
+                            .setMessage("Pokusy všetkých družstiev sa budú rátať znova od 1. Nahrané videá ostanú zachované.")
+                            .setPositiveButton("Vynulovať") { _, _ ->
+                                preferenceManager.sharedPreferences?.let { Teams.resetCounter(it, null) }
+                                refresh()
+                                android.widget.Toast.makeText(requireContext(), "Počítadlo pokusov vynulované", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                            .setNegativeButton("Zrušiť", null)
+                            .show()
+                        true
+                    }
+                }
                 val cat = category(preferenceScreen, "Výsledky")
                 cat.add(Preference(preferenceManager.context).apply {
                     title = "📊 Otvoriť výsledkovú tabuľku"
