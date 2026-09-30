@@ -27,22 +27,17 @@ header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px
 @keyframes blink{50%{opacity:.25}}
 .spacer{flex:1}
 .iconbtn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer}
-main{display:grid;gap:var(--gap);padding:var(--gap);max-width:1400px;margin:0 auto;
-  grid-template-columns:1fr;grid-template-areas:"video" "rec" "sw" "team" "udp" "info"}
+main{display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);max-width:1400px;margin:0 auto}
+.col{display:contents}
+.card.video{order:1}.card.rec{order:2}.card.sw{order:3}.card.team{order:4}.card.udp{order:5}.card.info{order:6}
 @media (min-width:980px){
-  main{grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);
-    grid-template-areas:"video rec" "video sw" "team sw" "udp udp" "info info"}
-  .video{position:sticky;top:70px;align-self:start}
-}
-@media (min-width:1400px){
-  main{grid-template-columns:minmax(0,1.6fr) minmax(320px,.8fr) minmax(320px,.8fr);
-    grid-template-areas:"video rec sw" "video team sw" "video udp udp" "info udp udp"}
+  main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(360px,1fr);align-items:start}
+  .col{display:flex;flex-direction:column;gap:var(--gap);min-width:0}
 }
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
 .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
 .card h2 .right{margin-left:auto;text-transform:none;letter-spacing:0}
-.video{grid-area:video;padding:0;overflow:hidden}
-.rec{grid-area:rec}.sw{grid-area:sw}.team{grid-area:team}.udp{grid-area:udp}.info{grid-area:info}
+.video{padding:0;overflow:hidden}
 .stage{position:relative;background:#000;aspect-ratio:16/9;width:100%}
 .stage video,.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .stage .badge{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.6);padding:3px 8px;border-radius:8px;font-size:12px}
@@ -113,6 +108,7 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;paddi
 </header>
 
 <main>
+ <div class="col">
   <section class="card video">
     <div class="stage">
       <video id="vid" muted autoplay playsinline></video>
@@ -121,7 +117,33 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;paddi
     </div>
     <div class="vbar"><span id="modeText">Obraz: …</span><span class="spacer"></span><a href="#" id="modeLink"></a><a href="#" id="fsLink">⛶ Celá obrazovka</a></div>
   </section>
-
+  <section class="card udp">
+    <h2>UDP príkazy <span class="right hint">spracujú sa ako správa z časomiery</span></h2>
+    <div class="chips" id="quick"></div>
+    <div class="inline" style="margin-top:12px">
+      <input type="text" id="cmdIn" placeholder="vlastný príkaz alebo text, napr. VERDIKT:D, TEAM:Dolany, 16.84" autocomplete="off" enterkeyhint="send">
+      <button class="btn blue sm" id="cmdSend">Odoslať</button>
+      <button class="btn sm" id="cmdSave" title="Uložiť ako tlačidlo">☆</button>
+    </div>
+    <div class="opts">
+      <label class="chk"><input type="checkbox" id="netAll"> Poslať aj ostatným kamerám v sieti (broadcast)</label>
+    </div>
+    <div class="chips" id="custom" style="margin-top:10px"></div>
+    <div class="log" id="log"></div>
+  </section>
+  <section class="card info">
+    <h2>Stav</h2>
+    <div class="kv">
+      <div>Kamera</div><div id="iInfo">–</div>
+      <div>Overlay 1</div><div class="ov" id="ov0">–</div>
+      <div>Overlay 2</div><div class="ov" id="ov1">–</div>
+      <div>Overlay 3</div><div class="ov" id="ov2">–</div>
+      <div>Posledná UDP</div><div class="ov" id="iUdp">–</div>
+    </div>
+    <div class="hint">Klávesy: <kbd>R</kbd> nahrávanie, <kbd>M</kbd> značka, <kbd>Medzera</kbd> stopky, <kbd>L</kbd> medzičas, <kbd>Esc</kbd> reset stopiek.</div>
+  </section>
+ </div>
+ <div class="col">
   <section class="card rec">
     <h2>Nahrávanie <span class="right" id="recHint"><kbd>R</kbd></span></h2>
     <button class="btn recbtn" id="recBtn"><span class="ring"></span><span id="recLabel">Nahrávať</span></button>
@@ -145,7 +167,7 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;paddi
       <label class="chk"><input type="checkbox" id="swSend"> Zobrazovať stopky v obraze (ako čas z UDP)</label>
       <label class="chk"><input type="checkbox" id="swRec"> Štart stopiek spustí nahrávanie</label>
       <label class="chk"><input type="checkbox" id="swMark"> Medzičas pridá značku do videa</label>
-      <div class="field">Predpona textu v obraze (napr. <code>1:</code> pre overlay 1)
+      <div class="field"><span>Predpona textu v obraze (napr. <code>1:</code> pre overlay 1)</span>
         <input type="text" id="swPrefix" placeholder="bez predpony" autocomplete="off"></div>
     </div>
   </section>
@@ -169,32 +191,10 @@ kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;paddi
     </div>
   </section>
 
-  <section class="card udp">
-    <h2>UDP príkazy <span class="right hint">spracujú sa ako správa z časomiery</span></h2>
-    <div class="chips" id="quick"></div>
-    <div class="inline" style="margin-top:12px">
-      <input type="text" id="cmdIn" placeholder="vlastný príkaz alebo text, napr. VERDIKT:D, TEAM:Dolany, 16.84" autocomplete="off" enterkeyhint="send">
-      <button class="btn blue sm" id="cmdSend">Odoslať</button>
-      <button class="btn sm" id="cmdSave" title="Uložiť ako tlačidlo">☆</button>
-    </div>
-    <div class="opts">
-      <label class="chk"><input type="checkbox" id="netAll"> Poslať aj ostatným kamerám v sieti (broadcast)</label>
-    </div>
-    <div class="chips" id="custom" style="margin-top:10px"></div>
-    <div class="log" id="log"></div>
-  </section>
 
-  <section class="card info">
-    <h2>Stav</h2>
-    <div class="kv">
-      <div>Kamera</div><div id="iInfo">–</div>
-      <div>Overlay 1</div><div class="ov" id="ov0">–</div>
-      <div>Overlay 2</div><div class="ov" id="ov1">–</div>
-      <div>Overlay 3</div><div class="ov" id="ov2">–</div>
-      <div>Posledná UDP</div><div class="ov" id="iUdp">–</div>
-    </div>
-    <div class="hint">Klávesy: <kbd>R</kbd> nahrávanie, <kbd>M</kbd> značka, <kbd>Medzera</kbd> stopky, <kbd>L</kbd> medzičas, <kbd>Esc</kbd> reset stopiek.</div>
-  </section>
+
+
+ </div>
 </main>
 
 <dialog id="pinDlg">
