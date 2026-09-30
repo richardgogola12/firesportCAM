@@ -20,6 +20,13 @@
             app:key="camera_name"
             app:summary="napr. Štart, Terče, Bok – pridá sa do názvu videa a do výsledkov. V overlayi ako {kamera}."
             app:title="Názov kamery" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="relay_texts"
+            app:summary="Hlavná kamera pošle časy a príkazy z časomiery aj vedľajším kamerám – čas sa ukáže aj na nich, aj keď ich ESP nevidí"
+            app:title="Posielať čas vedľajším kamerám" />
     </PreferenceCategory>
 
     <PreferenceCategory

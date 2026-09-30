@@ -35,14 +35,17 @@ object CamLink {
         return out.toList()
     }
 
-    fun send(port: Int, text: String) {
+    /** Predpona textov z časomiery, ktoré hlavná kamera preposiela vedľajším. */
+    const val RELAY = "FSCAM:TXT:"
+
+    fun send(port: Int, text: String, times: Int = 2) {
         exec.execute {
             try {
                 DatagramSocket().use { s ->
                     s.broadcast = true
                     val data = text.toByteArray(Charsets.UTF_8)
                     // 2× pre istotu – UDP môže paket stratiť
-                    repeat(2) {
+                    repeat(times) {
                         for (addr in broadcastAddresses()) {
                             try {
                                 s.send(DatagramPacket(data, data.size, addr, port))

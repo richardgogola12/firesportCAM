@@ -385,10 +385,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         udpStatus = "UDP štartuje na porte $port"
         udp = UdpReceiver(
             this, port, cs, group,
-            onMessage = { msg, from ->
-                if (from.isNotEmpty()) OverlayState.lastSender = from
-                OverlayState.onPacket(msg)
-            },
+            onMessage = { msg, from -> handleUdp(msg, from, port) },
             onStatus = { s -> udpStatus = s },
             announcePort = if (prefs.getBoolean("udp_announce", true)) Prefs.int(prefs, "udp_announce_port", 5001) else 0,
             deviceName = Prefs.str(prefs, "camera_name", "")
@@ -396,6 +393,34 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     }
 
     // ------------------------------------------------------------------ UDP príkazy a texty
+
+    @Volatile private var lastUdpText = ""
+    @Volatile private var lastUdpAt = 0L
+    @Volatile private var lastUdpRelayed = false
+
+    /**
+     * Správa z UDP. Hlavná kamera preposiela texty z časomiery vedľajším (FSCAM:TXT:…),
+     * vedľajšia ich spracuje ako priamo z časomiery. Ak príde tá istá správa
+     * aj priamo, aj cez hlavnú kameru, druhá sa ignoruje.
+     */
+    private fun handleUdp(msg: String, from: String, port: Int) {
+        val role = prefs.getString("camera_role", "single")
+        val relayed = msg.startsWith(CamLink.RELAY)
+        if (relayed && role != "slave") return
+        val text = if (relayed) msg.substring(CamLink.RELAY.length) else msg
+        if (!relayed && msg.startsWith("FSCAM:")) {
+            OverlayState.onPacket(msg)
+            return
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (text == lastUdpText && relayed != lastUdpRelayed && now - lastUdpAt < 1500) return
+        lastUdpText = text
+        lastUdpAt = now
+        lastUdpRelayed = relayed
+        if (from.isNotEmpty() && !relayed) OverlayState.lastSender = from
+        if (role == "master" && prefs.getBoolean("relay_texts", true)) CamLink.send(port, CamLink.RELAY + text, times = 1)
+        OverlayState.onPacket(text)
+    }
 
     override fun onCommand(cmd: String, arg: String) {
         mainHandler.post {

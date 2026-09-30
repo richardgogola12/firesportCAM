@@ -20,6 +20,10 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.6
+
+- **Čas aj na vedľajšej kamere:** hlavná kamera preposiela časy a príkazy z časomiery vedľajším (Kamery a OBS → Posielať čas vedľajším kamerám).
+
 ## Novinky vo verzii 2.5
 
 - **Verdikty pokusov:** OK (úspešný), NP (nedokončený), D (diskvalifikovaný), NA (ešte nebežali). Rýchla voľba po pokuse, UDP `VERDIKT:D`, skratky v Nastavenia → Ostatné.
