@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+
+        <ListPreference
+            app:defaultValue="FHD"
+            app:entries="@array/quality_entries"
+            app:entryValues="@array/quality_values"
+            app:iconSpaceReserved="false"
+            app:key="video_quality"
+            app:title="Rozlíšenie"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="0"
+            app:entries="@array/fps_entries"
+            app:entryValues="@array/fps_values"
+            app:iconSpaceReserved="false"
+            app:key="video_fps"
+            app:title="Snímková frekvencia"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="0"
+            app:entries="@array/bitrate_entries"
+            app:entryValues="@array/bitrate_values"
+            app:iconSpaceReserved="false"
+            app:key="video_bitrate"
+            app:title="Dátový tok (bitrate)"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="audio_enabled"
+            app:summary="Nahrávať zvuk z mikrofónu"
+            app:title="Zvuk" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="stabilization"
+            app:summary="Elektronická stabilizácia (EIS) – mierne oreže obraz"
+            app:title="Stabilizácia videa" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="ois"
+            app:summary="Ak ju kamera podporuje"
+            app:title="Optická stabilizácia (OIS)" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="auto_copy_gallery"
+            app:summary="Po nahratí skopírovať aj do Filmy/FiresportCam (Android 10+)"
+            app:title="Kopírovať do galérie telefónu" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="preroll_enabled"
+            app:summary="Kamera stále nahráva do pamäte a pri štarte pridá posledné sekundy – nič sa nezmešká. Viac zohrieva telefón a pri dlhom predstihu sa video po zastavení chvíľu spája."
+            app:title="Predstih nahrávania" />
+
+        <EditTextPreference
+            app:defaultValue="5"
+            app:iconSpaceReserved="false"
+            app:key="preroll_seconds"
+            app:title="Dĺžka predstihu (sekundy)"
+            app:useSimpleSummaryProvider="true" />
+</PreferenceScreen>

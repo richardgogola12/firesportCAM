@@ -52,6 +52,42 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+        <TextView
+                android:id="@+id/btnTeam"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/chip_bg"
+                android:paddingStart="12dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="5dp"
+                android:text="Družstvo: —"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btnClearUdp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginTop="4dp"
+                android:background="@drawable/chip_bg"
+                android:paddingStart="12dp"
+                android:paddingTop="5dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="5dp"
+                android:text="✕ Vymazať čas"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- ľavý stĺpec -->
@@ -62,20 +98,23 @@
         android:layout_marginStart="12dp"
         android:orientation="vertical">
 
-        <TextView
+        <ImageView
             android:id="@+id/btnTorch"
-            style="@style/RoundButton"
-            android:text="🔦" />
+            style="@style/IconButton"
+            android:src="@drawable/ic_torch"
+            android:contentDescription="Svetlo" />
 
-        <TextView
+        <ImageView
             android:id="@+id/btnControls"
-            style="@style/RoundButton"
-            android:text="🎛" />
+            style="@style/IconButton"
+            android:src="@drawable/ic_tune"
+            android:contentDescription="Manuálne nastavenia" />
 
-        <TextView
+        <ImageView
             android:id="@+id/btnSettings"
-            style="@style/RoundButton"
-            android:text="⚙" />
+            style="@style/IconButton"
+            android:src="@drawable/ic_settings"
+            android:contentDescription="Nastavenia" />
     </LinearLayout>
 
     <!-- pravý stĺpec -->
@@ -87,10 +126,18 @@
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
-        <TextView
+        <ImageView
+            android:id="@+id/btnMark"
+            style="@style/IconButton"
+            android:src="@drawable/ic_pin"
+            android:contentDescription="Značka"
+            android:visibility="gone" />
+
+        <ImageView
             android:id="@+id/btnSwitch"
-            style="@style/RoundButton"
-            android:text="🔄" />
+            style="@style/IconButton"
+            android:src="@drawable/ic_switch_camera"
+            android:contentDescription="Prepnúť kameru" />
 
         <View
             android:id="@+id/btnRecord"
@@ -102,10 +149,11 @@
             android:clickable="true"
             android:focusable="true" />
 
-        <TextView
+        <ImageView
             android:id="@+id/btnGallery"
-            style="@style/RoundButton"
-            android:text="🎞" />
+            style="@style/IconButton"
+            android:src="@drawable/ic_gallery"
+            android:contentDescription="Galéria" />
     </LinearLayout>
 
     <!-- panel manuálnych nastavení -->

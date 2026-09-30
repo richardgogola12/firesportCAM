@@ -24,6 +24,25 @@
         <item name="android:focusable">true</item>
     </style>
 
+    <style name="RoundButton.Small">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_margin">5dp</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="IconButton" parent="RoundButton">
+        <item name="android:padding">13dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <style name="IconButton.Small">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_margin">5dp</item>
+        <item name="android:padding">12dp</item>
+    </style>
+
     <style name="OverlayLabel">
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:shadowColor">#000000</item>

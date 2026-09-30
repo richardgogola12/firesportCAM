@@ -10,6 +10,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="true"
@@ -22,8 +26,8 @@
         <activity
             android:name=".CameraActivity"
             android:exported="true"
-            android:screenOrientation="landscape"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTask"
+            android:configChanges="keyboardHidden"
             android:theme="@style/Theme.FiresportCam.Fullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,6 +50,27 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:label="Nastavenia" />
+
+        <activity
+            android:name=".CompareActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:theme="@style/Theme.FiresportCam.Fullscreen" />
+
+        <activity
+            android:name=".HelpActivity"
+            android:exported="false"
+            android:label="Návod" />
+
+        <activity
+            android:name=".ResultsActivity"
+            android:exported="false"
+            android:label="Výsledky" />
+
+        <service
+            android:name=".RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="camera|microphone" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

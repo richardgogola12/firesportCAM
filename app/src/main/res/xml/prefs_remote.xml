@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Viac kamier">
+
+        <ListPreference
+            app:defaultValue="single"
+            app:entries="@array/camera_role_entries"
+            app:entryValues="@array/camera_role_values"
+            app:iconSpaceReserved="false"
+            app:key="camera_role"
+            app:title="Úloha tohto telefónu"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="camera_name"
+            app:summary="napr. Štart, Terče, Bok – pridá sa do názvu videa a do výsledkov. V overlayi ako {kamera}."
+            app:title="Názov kamery" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Diaľkové ovládanie a OBS">
+
+    <SwitchPreferenceCompat
+        app:defaultValue="false"
+        app:iconSpaceReserved="false"
+        app:key="remote_enabled"
+        app:summary="Ovládanie a náhľad z iného mobilu alebo PC cez prehliadač (rovnaká Wi-Fi / hotspot)"
+        app:title="Diaľkové ovládanie" />
+
+    <EditTextPreference
+        app:defaultValue="8080"
+        app:iconSpaceReserved="false"
+        app:key="remote_port"
+        app:title="Port webovej stránky"
+        app:useSimpleSummaryProvider="true" />
+
+    <EditTextPreference
+        app:defaultValue=""
+        app:iconSpaceReserved="false"
+        app:key="remote_pin"
+        app:summary="Voliteľné – bez PIN-u môže ovládať ktokoľvek v sieti"
+        app:title="PIN" />
+
+    <ListPreference
+        app:defaultValue="15"
+        app:entries="@array/remote_fps_entries"
+        app:entryValues="@array/remote_fps_values"
+        app:iconSpaceReserved="false"
+        app:key="remote_fps"
+        app:title="Plynulosť náhľadu"
+        app:useSimpleSummaryProvider="true" />
+
+    <ListPreference
+        app:defaultValue="640"
+        app:entries="@array/remote_width_entries"
+        app:entryValues="@array/remote_width_values"
+        app:iconSpaceReserved="false"
+        app:key="remote_width"
+        app:title="Veľkosť náhľadu"
+        app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

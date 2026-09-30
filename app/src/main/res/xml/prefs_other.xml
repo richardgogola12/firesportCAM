@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+        <ListPreference
+            app:defaultValue="auto"
+            app:entries="@array/orientation_entries"
+            app:entryValues="@array/orientation_values"
+            app:iconSpaceReserved="false"
+            app:key="orientation"
+            app:title="Orientácia nahrávania"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="grid"
+            app:summary="Mriežka tretín (iba v náhľade, nenahráva sa)"
+            app:title="Mriežka" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="show_status"
+            app:summary="Kamera, rozlíšenie, zoom, stav UDP"
+            app:title="Zobraziť stavový riadok" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="keep_screen_on"
+            app:title="Nevypínať obrazovku" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="volume_record"
+            app:summary="Tlačidlá hlasitosti spustia / zastavia nahrávanie"
+            app:title="Nahrávanie tlačidlom hlasitosti" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="bg_record"
+            app:summary="Nahrávanie pokračuje aj pri zhasnutej obrazovke, prichádzajúcom hovore alebo prepnutí aplikácie (experimentálne)"
+            app:title="Nahrávať aj na pozadí" />
+</PreferenceScreen>

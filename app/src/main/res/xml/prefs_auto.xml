@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Riadenie nahrávania cez UDP">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="udp_commands"
+            app:summary="Časomiera môže spustiť / zastaviť nahrávanie a pridať značku. Príkazy sa nezobrazia v overlayi."
+            app:title="Prijímať príkazy" />
+
+        <EditTextPreference
+            app:defaultValue="START"
+            app:iconSpaceReserved="false"
+            app:key="cmd_start"
+            app:title="Príkaz na spustenie nahrávania"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="STOP"
+            app:iconSpaceReserved="false"
+            app:key="cmd_stop"
+            app:title="Príkaz na zastavenie nahrávania"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="MARK"
+            app:iconSpaceReserved="false"
+            app:key="cmd_mark"
+            app:title="Príkaz na značku (aj MARK:text)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Automatické zastavenie">
+
+        <EditTextPreference
+            app:defaultValue="0"
+            app:iconSpaceReserved="false"
+            app:key="auto_stop_after_final"
+            app:title="Zastaviť X sekúnd po zastavení času (0 = vypnuté)"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="0"
+            app:iconSpaceReserved="false"
+            app:key="auto_stop_after"
+            app:title="Maximálna dĺžka nahrávky v sekundách (0 = bez obmedzenia)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Značky v čase videa">
+
+        <ListPreference
+            app:defaultValue="stable"
+            app:entries="@array/marker_mode_entries"
+            app:entryValues="@array/marker_mode_values"
+            app:iconSpaceReserved="false"
+            app:key="marker_mode"
+            app:title="Kedy vytvoriť značku z UDP"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="1000"
+            app:iconSpaceReserved="false"
+            app:key="marker_stable_ms"
+            app:title="Čas zastavený aspoň (ms)"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="marker_ignore_zero"
+            app:summary="Nuly (0.00) po vynulovaní časomiery nevytvoria značku"
+            app:title="Ignorovať nulové časy" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Replay po pokuse">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="replay_enabled"
+            app:summary="Po zastavení nahrávania sa video hneď otvorí v prehrávači"
+            app:title="Okamžité prehratie" />
+
+        <ListPreference
+            app:defaultValue="marker"
+            app:entries="@array/replay_start_entries"
+            app:entryValues="@array/replay_start_values"
+            app:iconSpaceReserved="false"
+            app:key="replay_start"
+            app:title="Odkiaľ prehrať"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="3"
+            app:iconSpaceReserved="false"
+            app:key="replay_before_s"
+            app:title="Koľko sekúnd pred značkou začať"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="0.5"
+            app:entries="@array/replay_speed_entries"
+            app:entryValues="@array/replay_speed_values"
+            app:iconSpaceReserved="false"
+            app:key="replay_speed"
+            app:title="Rýchlosť prehratia"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

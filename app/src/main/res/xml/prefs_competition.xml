@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Súťaž">
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="event_name"
+            app:summary="Videá sa ukladajú do priečinka súťaže. Prázdne = bez súťaže. V overlayi ako {sutaz}."
+            app:title="Súťaž / udalosť" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Družstvá">
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="team_name"
+            app:title="Aktuálne družstvo"
+            app:summary="Zmeníš ho aj ťuknutím na „Družstvo“ v kamere alebo príkazom TEAM:názov. V overlayi ako {druzstvo}." />
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="teams_list"
+            app:summary="Jedno družstvo na riadok – ponúknu sa na výber v kamere"
+            app:title="Zoznam družstiev" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="name_by_team"
+            app:summary="napr. Dolany_16-84_2.pokus_20260929_101500.mp4"
+            app:title="Pomenovať video podľa družstva a času" />
+
+        <EditTextPreference
+            app:defaultValue="TEAM"
+            app:iconSpaceReserved="false"
+            app:key="cmd_team"
+            app:title="UDP príkaz na zmenu družstva (TEAM:názov)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Medzičasy">
+
+        <EditTextPreference
+            app:defaultValue="Štart,Rozvinutie,Spoj,Prúdnica,Terč"
+            app:iconSpaceReserved="false"
+            app:key="split_phases"
+            app:title="Fázy pokusu (oddelené čiarkou)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

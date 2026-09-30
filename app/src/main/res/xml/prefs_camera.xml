@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+        <ListPreference
+            app:defaultValue="auto"
+            app:entries="@array/antibanding_entries"
+            app:entryValues="@array/antibanding_values"
+            app:iconSpaceReserved="false"
+            app:key="antibanding"
+            app:title="Potlačenie blikania svetiel"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="default"
+            app:entries="@array/processing_entries"
+            app:entryValues="@array/processing_values"
+            app:iconSpaceReserved="false"
+            app:key="noise_reduction"
+            app:title="Redukcia šumu"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="default"
+            app:entries="@array/processing_entries"
+            app:entryValues="@array/processing_values"
+            app:iconSpaceReserved="false"
+            app:key="edge_mode"
+            app:title="Doostrenie hrán"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="tap_to_focus"
+            app:summary="Ťuknutím do obrazu zaostríš a nameriaš expozíciu"
+            app:title="Ostrenie ťuknutím" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="reset_camera"
+            app:summary="Zoom, expozícia, ostrenie, ISO, uzávierka, vyváženie bielej, svetlo"
+            app:title="Resetovať manuálne nastavenia kamery" />
+</PreferenceScreen>

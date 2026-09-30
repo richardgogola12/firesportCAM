@@ -24,6 +24,8 @@
         <item>30 fps</item>
         <item>50 fps</item>
         <item>60 fps</item>
+        <item>90 fps (ak to kamera podporuje)</item>
+        <item>120 fps (ak to kamera podporuje)</item>
     </string-array>
     <string-array name="fps_values">
         <item>0</item>
@@ -32,6 +34,8 @@
         <item>30</item>
         <item>50</item>
         <item>60</item>
+        <item>90</item>
+        <item>120</item>
     </string-array>
 
     <string-array name="bitrate_entries">
@@ -84,11 +88,13 @@
     </string-array>
 
     <string-array name="orientation_entries">
+        <item>Automaticky (podľa otočenia telefónu)</item>
         <item>Na šírku</item>
         <item>Na šírku (otočené o 180°)</item>
         <item>Na výšku</item>
     </string-array>
     <string-array name="orientation_values">
+        <item>auto</item>
         <item>landscape</item>
         <item>reverse_landscape</item>
         <item>portrait</item>
@@ -110,11 +116,12 @@
     </string-array>
 
     <string-array name="udp_mode_entries">
-        <item>Rovnaký text do oboch overlayov</item>
-        <item>Rozdeliť oddeľovačom (1. časť → overlay 1, 2. časť → overlay 2)</item>
-        <item>Podľa predpony správy (1:text / 2:text)</item>
+        <item>Rovnaký text do overlayov 1 a 2</item>
+        <item>Rozdeliť oddeľovačom (1. časť → overlay 1, 2. → overlay 2, 3. → overlay 3)</item>
+        <item>Podľa predpony správy (1:text / 2:text / 3:text)</item>
         <item>Iba do overlayu 1</item>
         <item>Iba do overlayu 2</item>
+        <item>Iba do overlayu 3</item>
     </string-array>
     <string-array name="udp_mode_values">
         <item>same</item>
@@ -122,5 +129,89 @@
         <item>prefix</item>
         <item>only1</item>
         <item>only2</item>
+        <item>only3</item>
+    </string-array>
+
+    <string-array name="marker_mode_entries">
+        <item>Keď sa čas zastaví (odporúčané)</item>
+        <item>Pri každej zmene textu</item>
+        <item>Vypnuté (iba ručne / príkazom)</item>
+    </string-array>
+    <string-array name="marker_mode_values">
+        <item>stable</item>
+        <item>every</item>
+        <item>off</item>
+    </string-array>
+
+    <string-array name="replay_start_entries">
+        <item>Pred prvou značkou (čas pokusu)</item>
+        <item>Pred poslednou značkou</item>
+        <item>Od začiatku</item>
+    </string-array>
+    <string-array name="replay_start_values">
+        <item>marker</item>
+        <item>last_marker</item>
+        <item>start</item>
+    </string-array>
+
+    <string-array name="replay_speed_entries">
+        <item>0.1×</item>
+        <item>0.25×</item>
+        <item>0.5×</item>
+        <item>1× (normálna)</item>
+    </string-array>
+    <string-array name="replay_speed_values">
+        <item>0.1</item>
+        <item>0.25</item>
+        <item>0.5</item>
+        <item>1</item>
+    </string-array>
+
+    <string-array name="remote_fps_entries">
+        <item>5 snímok/s (slabá sieť)</item>
+        <item>10 snímok/s</item>
+        <item>15 snímok/s (odporúčané)</item>
+        <item>20 snímok/s</item>
+        <item>25 snímok/s (rýchla Wi-Fi)</item>
+    </string-array>
+    <string-array name="remote_fps_values">
+        <item>5</item>
+        <item>10</item>
+        <item>15</item>
+        <item>20</item>
+        <item>25</item>
+    </string-array>
+
+    <string-array name="remote_width_entries">
+        <item>Malá (480 px, najplynulejšia)</item>
+        <item>Stredná (640 px)</item>
+        <item>Veľká (960 px)</item>
+        <item>HD (1280 px)</item>
+    </string-array>
+    <string-array name="remote_width_values">
+        <item>480</item>
+        <item>640</item>
+        <item>960</item>
+        <item>1280</item>
+    </string-array>
+
+    <string-array name="camera_role_entries">
+        <item>Samostatná kamera</item>
+        <item>Hlavná – štart/stop a družstvo pošle ostatným telefónom</item>
+        <item>Vedľajšia – riadi ju hlavná kamera alebo časomiera</item>
+    </string-array>
+    <string-array name="camera_role_values">
+        <item>single</item>
+        <item>master</item>
+        <item>slave</item>
+    </string-array>
+
+    <string-array name="clear_mode_entries">
+        <item>Skryť overlay, kým nepríde nový čas</item>
+        <item>Zobraziť predvolený text</item>
+    </string-array>
+    <string-array name="clear_mode_values">
+        <item>hide</item>
+        <item>default</item>
     </string-array>
 </resources>

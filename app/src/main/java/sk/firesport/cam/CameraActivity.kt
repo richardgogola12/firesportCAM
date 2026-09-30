@@ -6,9 +6,11 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.graphics.RectF
+import android.hardware.display.DisplayManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
@@ -48,20 +50,20 @@ import androidx.camera.effects.Frame
 import androidx.camera.effects.OverlayEffect
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FallbackStrategy
-import androidx.camera.video.FileOutputOptions
 import androidx.camera.video.Quality
 import androidx.camera.video.QualitySelector
 import androidx.camera.video.Recorder
-import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
-import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.nio.charset.Charset
+import java.util.concurrent.CountDownLatch
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
@@ -70,7 +72,8 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalCamera2Interop::class)
-class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
+class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreferenceChangeListener,
+    PacketListener, RecordingManager.Callback, RemoteServer.Handler {
 
     companion object {
         private const val TAG = "FiresportCam"
@@ -100,12 +103,15 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     private lateinit var focusRing: View
     private lateinit var recLabel: TextView
     private lateinit var statusLabel: TextView
-    private lateinit var btnTorch: TextView
-    private lateinit var btnControls: TextView
-    private lateinit var btnSettings: TextView
-    private lateinit var btnSwitch: TextView
+    private lateinit var btnTorch: View
+    private lateinit var btnControls: View
+    private lateinit var btnSettings: View
+    private lateinit var btnSwitch: View
     private lateinit var btnRecord: View
-    private lateinit var btnGallery: TextView
+    private lateinit var btnGallery: View
+    private lateinit var btnMark: View
+    private lateinit var btnTeam: TextView
+    private lateinit var btnClearUdp: TextView
     private lateinit var controlsPanel: View
     private lateinit var tabBar: LinearLayout
     private lateinit var autoCheck: CheckBox
@@ -115,14 +121,20 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
     private var cameraProvider: ProcessCameraProvider? = null
     private var camera: Camera? = null
-    private var videoCapture: VideoCapture<Recorder>? = null
-    private var recording: Recording? = null
+    private var preview: Preview? = null
     private var overlayEffect: OverlayEffect? = null
     private val effectThread = HandlerThread("overlay-effect").apply { start() }
     private val effectHandler = Handler(effectThread.looper)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val renderer = OverlayRenderer()
     private var udp: UdpReceiver? = null
+    private var remote: RemoteServer? = null
+    private lateinit var rec: RecordingManager
+    private lateinit var device: DeviceStatus
+    private val camOwner = CameraLifecycleOwner()
+    private var activityStarted = false
+    private var fpsNote = ""
+    private var shownWarnings = ""
     @Volatile private var udpStatus = ""
     private var udpAddress = ""
 
@@ -143,8 +155,6 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
     private var currentTab = Tab.ZOOM
     private var updatingUi = false
-    private var isRecording = false
-    private var recNanos = 0L
 
     // dotyky
     private var dragIndex = -1
@@ -174,7 +184,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        PreferenceManager.setDefaultValues(this, R.xml.preferences, false)
+        Prefs.initDefaults(this)
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
         applyOrientation()
         setContentView(R.layout.activity_camera)
@@ -190,6 +200,9 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         btnSwitch = findViewById(R.id.btnSwitch)
         btnRecord = findViewById(R.id.btnRecord)
         btnGallery = findViewById(R.id.btnGallery)
+        btnMark = findViewById(R.id.btnMark)
+        btnTeam = findViewById(R.id.btnTeam)
+        btnClearUdp = findViewById(R.id.btnClearUdp)
         controlsPanel = findViewById(R.id.controlsPanel)
         tabBar = findViewById(R.id.tabBar)
         autoCheck = findViewById(R.id.autoCheck)
@@ -199,41 +212,85 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
         touchSlop = ViewConfiguration.get(this).scaledTouchSlop
         OverlayState.load(prefs)
+        rec = RecordingManager(this, prefs, this)
+        device = DeviceStatus(this)
+        OverlayState.listener = this
         setupButtons()
         setupControls()
         setupTouch()
 
         if (hasCameraPermission()) startCamera()
-        else permLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
+        else permLauncher.launch(requiredPermissions())
+    }
+
+    private fun requiredPermissions(): Array<String> {
+        val list = arrayListOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)
+        if (android.os.Build.VERSION.SDK_INT >= 33) list.add(Manifest.permission.POST_NOTIFICATIONS)
+        return list.toTypedArray()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        activityStarted = true
+        camOwner.start()
+        OverlayState.load(prefs)
+        startUdp()
+        startRemote()
+    }
+
+    override fun onStop() {
+        activityStarted = false
+        val keepRunning = rec.isBusy && prefs.getBoolean("bg_record", false)
+        if (!keepRunning) {
+            if (rec.isUserRecording) rec.stopUser()
+            stopBackgroundWork()
+        }
+        super.onStop()
+    }
+
+    /** Zastaví kameru, UDP a server (keď aktivita nie je viditeľná a nenahráva sa). */
+    private fun stopBackgroundWork() {
+        rec.onCameraUnbinding()
+        camOwner.stop()
+        udp?.stop()
+        udp = null
+        remote?.stop()
+        remote = null
     }
 
     override fun onResume() {
         super.onResume()
-        if (applyOrientation()) {
-            recreate()
-            return
-        }
+        if (!rec.isUserRecording) applyOrientation()
         hideSystemUi()
         if (prefs.getBoolean("keep_screen_on", true)) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         gridView.visibility = if (prefs.getBoolean("grid", false)) View.VISIBLE else View.GONE
         OverlayState.load(prefs)
         prefs.registerOnSharedPreferenceChangeListener(this)
-        startUdp()
-        if (cameraProvider != null) bindCamera()
+        if (cameraProvider != null) {
+            if (rec.isBusy) preview?.setSurfaceProvider(previewView.surfaceProvider)
+            else bindCamera()
+        }
+        updateButtons()
+        updateTeamLabel()
         mainHandler.post(ticker)
+        displayManager.registerDisplayListener(displayListener, mainHandler)
     }
 
     override fun onPause() {
-        recording?.stop()
         prefs.unregisterOnSharedPreferenceChangeListener(this)
-        udp?.stop()
-        udp = null
         mainHandler.removeCallbacks(ticker)
+        mainHandler.removeCallbacks(rotationCheck)
+        displayManager.unregisterDisplayListener(displayListener)
         super.onPause()
     }
 
     override fun onDestroy() {
+        if (OverlayState.listener === this) OverlayState.listener = null
+        rec.release()
+        stopBackgroundWork()
+        camOwner.destroy()
+        RecordingService.stop(this)
         super.onDestroy()
         overlayEffect?.close()
         overlayEffect = null
@@ -241,7 +298,13 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     }
 
     override fun onSharedPreferenceChanged(sp: SharedPreferences, key: String?) {
-        if (key == null || key.startsWith("ov") || key.startsWith("udp_")) OverlayState.load(sp)
+        val k = key ?: ""
+        if (key == null || k.startsWith("ov") || k.startsWith("udp_") || k.startsWith("logo") ||
+            k.startsWith("cmd_") || k == "event_name" || k == "profile_name" ||
+            k == "team_name" || k == "camera_name" || k == "clear_mode"
+        ) OverlayState.load(sp)
+        if (key == null || k == "team_name" || k == "event_name") updateTeamLabel()
+        if (key == null || k.startsWith("preroll")) rec.refresh()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -249,18 +312,39 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             keyCode == KeyEvent.KEYCODE_VOLUME_DOWN ||
             keyCode == KeyEvent.KEYCODE_CAMERA
         if (isRecKey && prefs.getBoolean("volume_record", true)) {
-            if (event.repeatCount == 0) toggleRecording()
+            if (event.repeatCount == 0) userToggle()
             return true
         }
         return super.onKeyDown(keyCode, event)
     }
 
-    /** @return true, ak sa orientácia zmenila. */
+    // ------------------------------------------------------------------ orientácia
+
+    private val displayManager by lazy { getSystemService(DISPLAY_SERVICE) as DisplayManager }
+    private var boundRotation = -1
+
+    /** Otočenie o 180° (napr. šírka → opačná šírka) nevyvolá nové vytvorenie aktivity – treba znova naviazať kameru. */
+    private val rotationCheck = Runnable {
+        val rot = previewView.display?.rotation ?: return@Runnable
+        if (rot != boundRotation && !rec.isBusy && cameraProvider != null) bindCamera()
+    }
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) {}
+        override fun onDisplayRemoved(displayId: Int) {}
+        override fun onDisplayChanged(displayId: Int) {
+            mainHandler.removeCallbacks(rotationCheck)
+            mainHandler.postDelayed(rotationCheck, 300)
+        }
+    }
+
+    /** Nastaví orientáciu podľa nastavení. @return true, ak sa zmenila. */
     private fun applyOrientation(): Boolean {
-        val want = when (prefs.getString("orientation", "landscape")) {
+        val want = when (prefs.getString("orientation", "auto")) {
             "portrait" -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
             "reverse_landscape" -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-            else -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            "landscape" -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            else -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
         }
         if (requestedOrientation != want) {
             requestedOrientation = want
@@ -300,9 +384,195 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         udpStatus = "UDP štartuje na porte $port"
         udp = UdpReceiver(
             this, port, cs, group,
-            onMessage = { msg -> OverlayState.onPacket(msg) },
-            onStatus = { s -> udpStatus = s }
+            onMessage = { msg, from ->
+                if (from.isNotEmpty()) OverlayState.lastSender = from
+                OverlayState.onPacket(msg)
+            },
+            onStatus = { s -> udpStatus = s },
+            announcePort = if (prefs.getBoolean("udp_announce", true)) Prefs.int(prefs, "udp_announce_port", 5001) else 0,
+            deviceName = Prefs.str(prefs, "camera_name", "")
         ).also { it.start() }
+    }
+
+    // ------------------------------------------------------------------ UDP príkazy a texty
+
+    override fun onCommand(cmd: String, arg: String) {
+        mainHandler.post {
+            if (!prefs.getBoolean("udp_commands", true)) return@post
+            when (cmd) {
+                "start" -> rec.startUser()
+                "stop" -> rec.stopUser()
+                "mark" -> rec.addMarker(arg)
+                "team" -> setTeam(arg, fromRemote = true)
+            }
+        }
+    }
+
+    override fun onText(index: Int, text: String) {
+        mainHandler.post { rec.onUdpText(index, text) }
+    }
+
+    // ------------------------------------------------------------------ nahrávanie – spätné volania
+
+    override fun onStateChanged() {
+        if (rec.isUserRecording) {
+            // počas nahrávania sa obrazovka neotáča (inak by sa nahrávanie prerušilo)
+            requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+        } else if (!rec.isBusy) {
+            applyOrientation()
+            if (!activityStarted) stopBackgroundWork()
+        }
+        updateButtons()
+    }
+
+    override fun onMessage(msg: String) = toast(msg)
+
+    override fun onMarker(marker: Marker) {
+        if (activityStarted) toast("📍 ${Markers.format(marker.ms)}  ${marker.text}")
+    }
+
+    override fun onSaved(file: File, markers: List<Marker>) {
+        toast("Uložené: ${file.name}" + if (markers.isNotEmpty()) " (${markers.size} značiek)" else "")
+        updateTeamLabel()
+        if (prefs.getBoolean("auto_copy_gallery", false)) {
+            val appCtx = applicationContext
+            Thread { VideoStore.copyToGallery(appCtx, file) }.start()
+        }
+        if (prefs.getBoolean("replay_enabled", false) && activityStarted) openReplay(file, markers)
+    }
+
+    /** Okamžité prehratie posledného pokusu. */
+    private fun openReplay(file: File, markers: List<Marker>) {
+        val before = Prefs.int(prefs, "replay_before_s", 3) * 1000L
+        val start = when (prefs.getString("replay_start", "marker")) {
+            "marker" -> markers.firstOrNull()?.let { (it.ms - before).coerceAtLeast(0L) } ?: 0L
+            "last_marker" -> markers.lastOrNull()?.let { (it.ms - before).coerceAtLeast(0L) } ?: 0L
+            else -> 0L
+        }
+        val speed = (prefs.getString("replay_speed", "0.5") ?: "0.5").toFloatOrNull() ?: 0.5f
+        startActivity(
+            Intent(this, PlayerActivity::class.java)
+                .putExtra(PlayerActivity.EXTRA_PATH, file.absolutePath)
+                .putExtra(PlayerActivity.EXTRA_START_MS, start)
+                .putExtra(PlayerActivity.EXTRA_SPEED, speed)
+        )
+    }
+
+    // ------------------------------------------------------------------ diaľkové ovládanie
+
+    private fun startRemote() {
+        remote?.stop()
+        remote = null
+        if (!prefs.getBoolean("remote_enabled", false)) return
+        val port = Prefs.int(prefs, "remote_port", 8080).takeIf { it in 1024..65535 } ?: 8080
+        remote = RemoteServer(port, Prefs.str(prefs, "remote_pin", ""), this).also { it.start() }
+    }
+
+    private fun jsonEscape(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+
+    override fun statusJson(): String {
+        val state = when (rec.state) {
+            RecordingManager.State.RECORDING -> "nahráva"
+            RecordingManager.State.PROCESSING -> "ukladá sa"
+            RecordingManager.State.BUFFERING -> "pripravená (predstih)"
+            RecordingManager.State.IDLE -> "pripravená"
+        }
+        val info = device.summary() + " • " + udpStatus +
+            (if (OverlayState.lastPacket.isNotEmpty()) " • UDP: " + OverlayState.lastPacket.take(30) else "")
+        return "{\"state\":\"${jsonEscape(state)}\",\"recording\":${rec.isUserRecording}," +
+            "\"duration\":\"${formatDuration(rec.userElapsedMs() * 1_000_000L)}\"," +
+            "\"info\":\"${jsonEscape(info)}\"}"
+    }
+
+    // znovu používané bitmapy pre stream (volá sa vždy z jedného vlákna naraz)
+    private var remoteSrc: Bitmap? = null
+    private var remoteDst: Bitmap? = null
+    private val remotePaint = android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG)
+
+    private fun findTexture(v: View): android.view.TextureView? {
+        if (v is android.view.TextureView) return v
+        if (v is android.view.ViewGroup) {
+            for (i in 0 until v.childCount) findTexture(v.getChildAt(i))?.let { return it }
+        }
+        return null
+    }
+
+    /**
+     * Malý snímok náhľadu pre diaľkové ovládanie. Obraz sa zmenšuje priamo na GPU
+     * (TextureView.getBitmap do malej bitmapy), takže je to rýchle.
+     */
+    override fun snapshot(): ByteArray? {
+        if (!activityStarted) return null
+        val targetW = Prefs.int(prefs, "remote_width", 640).coerceIn(240, 1920)
+        val quality = Prefs.int(prefs, "remote_quality", 60).coerceIn(20, 95)
+        val latch = CountDownLatch(1)
+        var result: Bitmap? = null
+        mainHandler.post {
+            try {
+                val tv = findTexture(previewView)
+                val vw = previewView.width
+                val vh = previewView.height
+                val crop = contentRect()
+                if (tv != null && tv.isAvailable && vw > 0 && vh > 0 && crop.width() > 0f && crop.height() > 0f) {
+                    val sc = targetW / crop.width()
+                    val sw = (vw * sc).toInt().coerceAtLeast(1)
+                    val sh = (vh * sc).toInt().coerceAtLeast(1)
+                    var src = remoteSrc
+                    if (src == null || src.width != sw || src.height != sh) {
+                        src = Bitmap.createBitmap(sw, sh, Bitmap.Config.ARGB_8888)
+                        remoteSrc = src
+                    }
+                    tv.getBitmap(src)
+                    val dw = targetW
+                    val dh = (crop.height() * sc).toInt().coerceAtLeast(1)
+                    var dst = remoteDst
+                    if (dst == null || dst.width != dw || dst.height != dh) {
+                        dst = Bitmap.createBitmap(dw, dh, Bitmap.Config.ARGB_8888)
+                        remoteDst = dst
+                    }
+                    // transformácia náhľadu (otočenie, prispôsobenie) prepočítaná na zmenšený obraz
+                    val m = android.graphics.Matrix()
+                    m.setScale(1f / sc, 1f / sc)
+                    m.postConcat(tv.getTransform(null))
+                    m.postScale(sc, sc)
+                    m.postTranslate(-crop.left * sc, -crop.top * sc)
+                    val c = android.graphics.Canvas(dst)
+                    c.drawColor(Color.BLACK)
+                    c.drawBitmap(src, m, remotePaint)
+                    result = dst
+                } else {
+                    result = previewView.bitmap
+                }
+            } catch (_: Exception) {
+            }
+            latch.countDown()
+        }
+        if (!latch.await(1, TimeUnit.SECONDS)) return null
+        val b = result ?: return null
+        val out = ByteArrayOutputStream(64 * 1024)
+        b.compress(Bitmap.CompressFormat.JPEG, quality, out)
+        return out.toByteArray()
+    }
+
+    /** Snímky za sekundu pre stream. */
+    override fun streamFps(): Int = Prefs.int(prefs, "remote_fps", 15).coerceIn(1, 30)
+
+    override fun command(cmd: String, arg: String): String {
+        val latch = CountDownLatch(1)
+        var msg = ""
+        mainHandler.post {
+            msg = when (cmd) {
+                "rec" -> { userStart(); "Nahrávanie spustené" }
+                "stop" -> { userStop(); "Nahrávanie zastavené" }
+                "toggle" -> { userToggle(); "OK" }
+                "mark" -> { rec.addMarker(arg); if (rec.isUserRecording) "Značka pridaná" else "Značka sa dá pridať len počas nahrávania" }
+                "clear" -> { OverlayState.clear(null); "Text z UDP vymazaný" }
+                else -> "Neznámy príkaz"
+            }
+            latch.countDown()
+        }
+        latch.await(2, TimeUnit.SECONDS)
+        return msg
     }
 
     // ------------------------------------------------------------------ kamera
@@ -365,7 +635,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
     private fun bindCamera() {
         val provider = cameraProvider ?: return
-        if (recording != null) return
+        if (rec.isBusy) return
+        rec.onCameraUnbinding()
         camera?.cameraInfo?.zoomState?.removeObservers(this)
         provider.unbindAll()
         overlayEffect?.close()
@@ -389,12 +660,12 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
         val preview = Preview.Builder().build()
         preview.setSurfaceProvider(previewView.surfaceProvider)
+        this.preview = preview
 
         val recorderBuilder = Recorder.Builder().setQualitySelector(qualitySelector())
         val mbps = (prefs.getString("video_bitrate", "0") ?: "0").toIntOrNull() ?: 0
         if (mbps > 0) recorderBuilder.setTargetVideoEncodingBitRate(mbps * 1_000_000)
         val vc = VideoCapture.withOutput(recorderBuilder.build())
-        videoCapture = vc
 
         val fps = (prefs.getString("video_fps", "0") ?: "0").toIntOrNull() ?: 0
         qualityLabel = (prefs.getString("video_quality", "FHD") ?: "FHD") +
@@ -411,7 +682,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
                 .addUseCase(vc)
                 .addEffect(effect)
                 .build()
-            val c = provider.bindToLifecycle(this, selector, group)
+            val c = provider.bindToLifecycle(camOwner, selector, group)
             overlayEffect = effect
             c
         } catch (e: Exception) {
@@ -420,7 +691,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             toast("Overlay do videa nie je na tomto zariadení podporený: ${e.message}")
             try {
                 provider.unbindAll()
-                provider.bindToLifecycle(this, selector, preview, vc)
+                provider.bindToLifecycle(camOwner, selector, preview, vc)
             } catch (e2: Exception) {
                 Log.e(TAG, "Bind failed", e2)
                 toast("Kameru sa nepodarilo spustiť: ${e2.message}")
@@ -429,6 +700,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         }
         if (cam == null) return
         camera = cam
+        boundRotation = previewView.display?.rotation ?: -1
+        rec.onCameraBound(vc)
 
         readCharacteristics(info)
         ignoreZoomSaveUntil = SystemClock.elapsedRealtime() + 1500
@@ -510,7 +783,14 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         }
 
         // snímková frekvencia
-        if (fps > 0) bestFpsRange(fps)?.let { b.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, it) }
+        fpsNote = ""
+        if (fps > 0) {
+            val r = bestFpsRange(fps)
+            if (r != null) {
+                b.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, r)
+                if (r.upper != fps) fpsNote = "${fps}fps nepodporované → ${r.upper}fps"
+            } else fpsNote = "fps nepodporované"
+        }
 
         // vyváženie bielej
         val wb = prefs.getInt("wb_mode", CameraMetadata.CONTROL_AWB_MODE_AUTO)
@@ -723,11 +1003,11 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     }
 
     private fun saveOverlayPosition(i: Int) {
-        val st = OverlayState.styles.getOrNull(i) ?: return
-        val n = i + 1
+        val (x, y) = OverlayState.positionOf(i) ?: return
+        val (kx, ky) = OverlayState.positionKeys(i)
         prefs.edit()
-            .putInt(Keys.ov(n, "pos_x"), (st.posX * 100).roundToInt())
-            .putInt(Keys.ov(n, "pos_y"), (st.posY * 100).roundToInt())
+            .putInt(kx, (x * 100).roundToInt())
+            .putInt(ky, (y * 100).roundToInt())
             .apply()
     }
 
@@ -756,7 +1036,21 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     // ------------------------------------------------------------------ tlačidlá
 
     private fun setupButtons() {
-        btnRecord.setOnClickListener { toggleRecording() }
+        btnRecord.setOnClickListener { userToggle() }
+        btnTeam.setOnClickListener { chooseTeam() }
+        btnClearUdp.setOnClickListener {
+            OverlayState.clear(null)
+            toast("Text z UDP vymazaný")
+        }
+        btnClearUdp.setOnLongClickListener {
+            val items = (1..TEXT_OVERLAYS).map { "Vymazať iba overlay $it" }.toTypedArray()
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Vymazať text z UDP")
+                .setItems(items) { _, w -> OverlayState.clear(w) }
+                .show()
+            true
+        }
+        btnMark.setOnClickListener { rec.addMarker("") }
 
         btnTorch.setOnClickListener {
             val cam = camera ?: return@setOnClickListener
@@ -771,7 +1065,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         }
 
         btnSwitch.setOnClickListener {
-            if (isRecording) return@setOnClickListener
+            if (rec.isBusy) return@setOnClickListener
             val provider = cameraProvider ?: return@setOnClickListener
             val infos = provider.availableCameraInfos
             if (infos.size < 2) {
@@ -792,12 +1086,12 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         }
 
         btnSettings.setOnClickListener {
-            if (isRecording) toast("Najprv zastav nahrávanie")
+            if (rec.isBusy) toast("Najprv zastav nahrávanie")
             else startActivity(Intent(this, SettingsActivity::class.java))
         }
 
         btnGallery.setOnClickListener {
-            if (isRecording) toast("Najprv zastav nahrávanie")
+            if (rec.isBusy) toast("Najprv zastav nahrávanie")
             else startActivity(Intent(this, GalleryActivity::class.java))
         }
     }
@@ -809,67 +1103,102 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         btnControls.setBackgroundResource(
             if (controlsPanel.visibility == View.VISIBLE) R.drawable.chip_bg_selected else R.drawable.btn_round
         )
-        val lockUi = isRecording
+        val lockUi = rec.isBusy
         btnSwitch.alpha = if (lockUi) 0.35f else 1f
         btnSettings.alpha = if (lockUi) 0.35f else 1f
         btnGallery.alpha = if (lockUi) 0.35f else 1f
-        btnRecord.setBackgroundResource(if (isRecording) R.drawable.btn_record_stop else R.drawable.btn_record)
+        btnRecord.setBackgroundResource(if (rec.isUserRecording) R.drawable.btn_record_stop else R.drawable.btn_record)
+        btnRecord.alpha = if (rec.state == RecordingManager.State.PROCESSING) 0.4f else 1f
+        btnMark.visibility = if (rec.isUserRecording) View.VISIBLE else View.GONE
     }
 
-    // ------------------------------------------------------------------ nahrávanie
+    // ------------------------------------------------------------------ družstvá a viac kamier
 
-    private fun toggleRecording() {
-        val r = recording
-        if (r != null) {
-            r.stop()
-        } else {
-            startRecording()
-        }
+    private fun isMaster() = prefs.getString("camera_role", "single") == "master"
+
+    private fun udpPort() = Prefs.int(prefs, "udp_port", 5000).takeIf { it in 1..65535 } ?: 5000
+
+    /** Nahrávanie spustené na tomto telefóne (tlačidlo, hlasitosť, web) – hlavná kamera ho pošle ďalej. */
+    private fun userStart() {
+        rec.startUser()
+        if (isMaster()) CamLink.send(udpPort(), OverlayState.cmdStart)
     }
 
-    @SuppressLint("MissingPermission")
-    private fun startRecording() {
-        val vc = videoCapture ?: run {
-            toast("Kamera nie je pripravená")
+    private fun userStop() {
+        rec.stopUser()
+        if (isMaster()) CamLink.send(udpPort(), OverlayState.cmdStop)
+    }
+
+    private fun userToggle() {
+        if (rec.isUserRecording) userStop() else if (!rec.isBusy) userStart()
+    }
+
+    private fun setTeam(name: String, fromRemote: Boolean = false) {
+        val n = name.trim()
+        prefs.edit().putString("team_name", n).apply()
+        if (n.isNotEmpty()) Teams.add(prefs, n)
+        OverlayState.teamName = n
+        updateTeamLabel()
+        if (!fromRemote && isMaster()) CamLink.send(udpPort(), "${OverlayState.cmdTeam}:$n")
+        if (fromRemote && activityStarted) toast("Družstvo: ${n.ifEmpty { "—" }}")
+    }
+
+    private fun updateTeamLabel() {
+        if (!::btnTeam.isInitialized) return
+        val team = Prefs.str(prefs, "team_name", "")
+        if (team.isEmpty()) {
+            btnTeam.text = "Družstvo: —"
             return
         }
-        val file = VideoStore.newFile(this)
-        val opts = FileOutputOptions.Builder(file).build()
-        var pending = vc.output.prepareRecording(this, opts)
-        val audioOk = prefs.getBoolean("audio_enabled", true) &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-        if (audioOk) pending = pending.withAudioEnabled()
-        recNanos = 0L
-        try {
-            recording = pending.start(ContextCompat.getMainExecutor(this)) { event ->
-                recNanos = event.recordingStats.recordedDurationNanos
-                when (event) {
-                    is VideoRecordEvent.Start -> {
-                        isRecording = true
-                        updateButtons()
-                    }
-                    is VideoRecordEvent.Finalize -> {
-                        isRecording = false
-                        recording = null
-                        updateButtons()
-                        val ok = file.exists() && file.length() > 0
-                        if (ok) {
-                            toast("Uložené: ${file.name}")
-                            if (prefs.getBoolean("auto_copy_gallery", false)) {
-                                val appCtx = applicationContext
-                                Thread { VideoStore.copyToGallery(appCtx, file) }.start()
-                            }
-                        } else {
-                            toast("Chyba nahrávania (kód ${event.error})")
-                        }
-                    }
-                    else -> Unit
+        val appCtx = applicationContext
+        val event = Prefs.str(prefs, "event_name", "")
+        btnTeam.text = "Družstvo: $team"
+        Thread {
+            val no = Teams.nextAttemptNo(appCtx, event, team)
+            mainHandler.post {
+                if (Prefs.str(prefs, "team_name", "") == team) btnTeam.text = "Družstvo: $team • $no. pokus"
+            }
+        }.start()
+    }
+
+    private fun chooseTeam() {
+        if (rec.isBusy) {
+            toast("Družstvo sa mení pred nahrávaním")
+            return
+        }
+        val teams = Teams.list(prefs)
+        val labels = ArrayList<String>()
+        labels.add("➕ Nové družstvo…")
+        labels.add("Bez družstva")
+        labels.addAll(teams)
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Družstvo pre ďalší pokus")
+            .setItems(labels.toTypedArray()) { _, w ->
+                when (w) {
+                    0 -> newTeamDialog()
+                    1 -> setTeam("")
+                    else -> setTeam(teams[w - 2])
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Start recording", e)
-            toast("Nahrávanie sa nepodarilo spustiť: ${e.message}")
+            .show()
+    }
+
+    private fun newTeamDialog() {
+        val input = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+            hint = "napr. Hasiči Dolany"
         }
+        val pad = (20 * resources.displayMetrics.density).toInt()
+        val box = android.widget.FrameLayout(this).apply {
+            setPadding(pad, pad / 2, pad, 0)
+            addView(input)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Nové družstvo")
+            .setView(box)
+            .setPositiveButton("OK") { _, _ -> setTeam(input.text.toString()) }
+            .setNegativeButton("Zrušiť", null)
+            .show()
     }
 
     // ------------------------------------------------------------------ stav
@@ -883,13 +1212,42 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         else String.format(Locale.US, "%02d:%02d", m, s)
     }
 
+    /** Ukazovateľ hlasitosti mikrofónu z amplitúdy 0..1. */
+    private fun levelBar(a: Double): String {
+        if (a < 0) return ""
+        val db = if (a > 0) 20 * kotlin.math.log10(a) else -60.0
+        val n = ((db + 60) / 60 * 8).roundToInt().coerceIn(0, 8)
+        return "  🎤" + "▮".repeat(n) + "▯".repeat(8 - n) + if (n >= 8) " !" else ""
+    }
+
+    private var statusTick = 0
+
     private fun updateStatus() {
-        if (isRecording) {
-            recLabel.visibility = View.VISIBLE
-            val blink = (SystemClock.elapsedRealtime() / 500) % 2 == 0L
-            recLabel.text = (if (blink) "● " else "○ ") + "REC " + formatDuration(recNanos)
-        } else {
-            recLabel.visibility = View.GONE
+        when (rec.state) {
+            RecordingManager.State.RECORDING -> {
+                recLabel.visibility = View.VISIBLE
+                val blink = (SystemClock.elapsedRealtime() / 500) % 2 == 0L
+                recLabel.text = (if (blink) "● " else "○ ") + "REC " +
+                    formatDuration(rec.userElapsedMs() * 1_000_000L) + levelBar(rec.audioLevel) +
+                    (if (rec.collector.markers.isNotEmpty()) "  📍${rec.collector.markers.size}" else "")
+            }
+            RecordingManager.State.PROCESSING -> {
+                recLabel.visibility = View.VISIBLE
+                recLabel.text = "⏳ Ukladám…"
+            }
+            RecordingManager.State.BUFFERING -> {
+                recLabel.visibility = View.VISIBLE
+                recLabel.text = "◌ predstih ${Prefs.int(prefs, "preroll_seconds", 5)} s pripravený"
+            }
+            else -> recLabel.visibility = View.GONE
+        }
+
+        // stav zariadenia stačí zisťovať raz za 2 s
+        if (statusTick++ % 8 == 0) {
+            device.update(prefs)
+            val w = device.warnings.joinToString(", ")
+            if (w.isNotEmpty() && w != shownWarnings) toast("⚠ $w")
+            shownWarnings = w
         }
 
         if (prefs.getBoolean("show_status", true)) {
@@ -897,7 +1255,14 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             sb.append(cameraLabel).append(" • ").append(qualityLabel)
                 .append(" • ").append(String.format(Locale.US, "%.1fx", zoomRatio))
             if (overlayEffect == null && camera != null) sb.append(" • overlay nedostupný")
+            if (fpsNote.isNotEmpty()) sb.append(" • ").append(fpsNote)
+            if (OverlayState.eventName.isNotEmpty()) sb.append(" • 🏆 ").append(OverlayState.eventName)
+            if (OverlayState.profileName.isNotEmpty()) sb.append(" • 👤 ").append(OverlayState.profileName)
+            sb.append('\n').append(device.summary())
+            if (device.warnings.isNotEmpty()) sb.append("  ⚠ ").append(device.warnings.joinToString(", "))
             sb.append('\n').append(udpStatus).append(" • IP: ").append(udpAddress)
+            if (OverlayState.lastSender.isNotEmpty()) sb.append(" • vysielač: ").append(OverlayState.lastSender)
+            remote?.let { sb.append(" • 🌐 :").append(Prefs.int(prefs, "remote_port", 8080)) }
             val last = OverlayState.lastPacketAt
             if (last > 0) {
                 val age = (SystemClock.elapsedRealtime() - last) / 1000f

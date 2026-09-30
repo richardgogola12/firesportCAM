@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="udp_enabled"
+            app:title="Prijímať UDP" />
+
+        <EditTextPreference
+            app:defaultValue="5000"
+            app:iconSpaceReserved="false"
+            app:key="udp_port"
+            app:title="UDP port"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="UTF-8"
+            app:entries="@array/encoding_entries"
+            app:entryValues="@array/encoding_values"
+            app:iconSpaceReserved="false"
+            app:key="udp_encoding"
+            app:title="Kódovanie textu"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="same"
+            app:entries="@array/udp_mode_entries"
+            app:entryValues="@array/udp_mode_values"
+            app:iconSpaceReserved="false"
+            app:key="udp_mode"
+            app:title="Rozdelenie textu do overlayov"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue=";"
+            app:iconSpaceReserved="false"
+            app:key="udp_separator"
+            app:title="Oddeľovač (pre režim rozdelenia)"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="0"
+            app:iconSpaceReserved="false"
+            app:key="udp_timeout"
+            app:title="Po koľkých sekundách bez správy vrátiť predvolený text (0 = nikdy)"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="0"
+            app:iconSpaceReserved="false"
+            app:key="udp_max_len"
+            app:title="Maximálna dĺžka textu (0 = bez obmedzenia)"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="udp_trim"
+            app:summary="Odstrániť medzery a konce riadkov na začiatku a konci"
+            app:title="Orezať text" />
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="udp_multicast"
+            app:summary="Nechaj prázdne pre bežný unicast / broadcast (napr. 239.1.1.1)"
+            app:title="Multicast skupina (voliteľné)" />
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Vymazanie textu">
+
+        <ListPreference
+            app:defaultValue="hide"
+            app:entries="@array/clear_mode_entries"
+            app:entryValues="@array/clear_mode_values"
+            app:iconSpaceReserved="false"
+            app:key="clear_mode"
+            app:title="Po vymazaní"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="CLEAR"
+            app:iconSpaceReserved="false"
+            app:key="cmd_clear"
+            app:title="UDP príkaz na vymazanie (CLEAR, CLEAR:1 …)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Automatické vyhľadanie telefónu">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="udp_announce"
+            app:summary="Telefón každé 2 s ohlási v sieti svoju IP adresu (FSCAM:HELLO) – vysielač, napr. ESP01, ju nemusí poznať vopred"
+            app:title="Ohlasovať telefón v sieti" />
+
+        <EditTextPreference
+            app:defaultValue="5001"
+            app:iconSpaceReserved="false"
+            app:key="udp_announce_port"
+            app:title="Port, na ktorý sa ohlasuje (počúva na ňom vysielač)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

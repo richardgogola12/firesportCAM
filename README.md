@@ -20,6 +20,44 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.3
+- vymazanie času z UDP: tlačidlo v kamere, na webe a príkaz CLEAR / CLEAR:1
+- automatické vyhľadanie telefónu – vysielač (ESP01) nemusí poznať IP telefónu
+  (FSCAM:HELLO / FSCAM:DISCOVER), program pre ESP-01 v `tools/esp01_firesport/`,
+  simulátor na PC `tools/esp_simulator.py`
+- program ESP-01 rozumie správam tréningovej časomiery (T:, STOPL:, STOPP:, M:, ERROR:)
+  a posiela do aplikácie „ľavý;pravý“ čas, pri štarte START a pri resete CLEAR
+- `tools/casomiera/casomieraOK_kamera.ino` – časomiera doplnená o presné časy terčov
+  (STOPL:/STOPP:) a obmedzenie správy ERROR na 1× za sekundu
+
+## Novinky vo verzii 2.2
+- družstvo ku každému pokusu (výber v kamere alebo príkaz TEAM:názov), číslovanie pokusov,
+  názov videa podľa družstva a času
+- výsledková tabuľka súťaže s poradím, opravou údajov a exportom do Excelu (CSV)
+- medzičasy fáz v prehrávači s porovnaním s najlepším pokusom družstva
+- viac kamier: hlavný telefón spúšťa / zastavuje ostatné, import videí z iného telefónu
+- OBS: čistý obraz na adrese http://IP:8080/obs (zdroj Prehliadač)
+
+## Novinky vo verzii 2.0
+- automatické spustenie / zastavenie nahrávania príkazmi z časomiery (START / STOP / MARK)
+- značky v čase videa (automaticky pri zastavení času), zoznam značiek v prehrávači
+- okamžitý replay po pokuse, predstih nahrávania (buffer pred štartom)
+- 90/120 fps (ak ich kamera podporuje), 3. informačný overlay so zástupnými textami, logo
+- ukazovateľ hlasitosti mikrofónu, stav batérie / teploty / miesta s upozorneniami
+- diaľkové ovládanie cez prehliadač (http://IP:8080), profily nastavení
+- galéria podľa súťaží, hromadný výber, výrez videa, porovnanie dvoch pokusov
+- nahrávanie na pozadí (experimentálne), návod v aplikácii (Nastavenia → Návod)
+
+## Verzia na zdieľanie (podpísaná vlastným kľúčom)
+- V Android Studiu: **Build → Select Build Variant…** → pri module `app` zvoľ **release**,
+  potom **Build → Build APK(s)**. (Alebo v termináli `gradlew assembleRelease`.)
+  Podpísané APK je v `app/build/outputs/apk/release/app-release.apk`.
+- Kľúč je v súbore `firesportcam-release.jks`, heslá v `keystore.properties`.
+  **Oba súbory si zálohuj a nezverejňuj** – bez nich sa nedajú vydávať aktualizácie.
+  Ak projekt nahrávaš na GitHub, použi súkromný repozitár.
+- Prechod z testovacej (debug) verzie na podpísanú vyžaduje odinštalovanie aplikácie.
+  Pri odinštalovaní sa zmažú videá v priečinku aplikácie – dôležité videá si najprv ulož do galérie.
+
 ## Funkcie
 
 ### Kamera (hlavná obrazovka)
@@ -35,10 +73,18 @@ Požiadavky: Android 8.0+ (API 26).
 - mriežka tretín, stavový riadok (kamera, rozlíšenie, zoom, IP, stav UDP, posledná správa)
 - všetko sa ukladá a po reštarte obnoví
 
-### Nastavenia (⚙)
+### Otáčanie
+Aplikácia funguje na výšku aj na šírku a otáča sa podľa telefónu (rešpektuje zámok otáčania).
+Počas nahrávania sa orientácia zamkne, aby sa video neprerušilo. Pevnú orientáciu
+nastavíš v Nastavenia → Ostatné.
+
+### Nastavenia (⚙) – rozdelené na karty
+Video · Kamera · Overlay 1 · Overlay 2 · UDP · Ostatné.
+Karty overlayov majú hore živý náhľad, v ktorom sa overlay dá potiahnuť prstom.
+
 - rozlíšenie (SD / HD / Full HD / 4K), snímková frekvencia (24/25/30/50/60), bitrate
 - zvuk zap/vyp, EIS stabilizácia, OIS, antiflicker 50/60 Hz, redukcia šumu, doostrenie
-- orientácia (na šírku / otočené / na výšku), nevypínať obrazovku, kopírovanie do galérie
+- orientácia (automaticky / na šírku / otočené / na výšku), nevypínať obrazovku, kopírovanie do galérie
 - UDP: port, kódovanie (UTF-8 / Windows-1250 / ISO-8859-2…), režim rozdelenia textu,
   oddeľovač, timeout, max. dĺžka, orezanie, multicast
 - **Overlay 1 a Overlay 2** – každý zvlášť:

@@ -3,7 +3,9 @@ package sk.firesport.cam
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -12,15 +14,21 @@ import android.text.InputType
 import android.text.format.Formatter
 import android.util.LruCache
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
@@ -30,24 +38,66 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-/** Prehľad videí nahraných touto aplikáciou. */
+/** Prehľad videí nahraných touto aplikáciou – podľa súťaží, s hromadným výberom. */
 class GalleryActivity : AppCompatActivity() {
+
+    companion object {
+        private const val M_SHARE = 1
+        private const val M_COMPARE = 2
+        private const val M_MOVE = 3
+        private const val M_DELETE = 4
+        private const val M_MORE = 5
+        private const val M_CLEAR = 6
+        private const val M_SELECT_ALL = 7
+        private const val M_HELP = 8
+        private const val M_RESULTS = 9
+        private const val M_IMPORT = 10
+
+        /** null = všetky, "" = bez súťaže */
+        private const val ALL = "\u0000all"
+    }
 
     private lateinit var recycler: RecyclerView
     private lateinit var emptyText: TextView
-    private val adapter = VideoAdapter(onClick = { openPlayer(it) }, onLongClick = { showOptions(it) })
+    private lateinit var eventBar: LinearLayout
+    private val selected = LinkedHashSet<String>()
+    private var filter = ALL
+    private var files: List<File> = emptyList()
+    private val importLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (uris.isNotEmpty()) importFiles(uris)
+        }
+
+    private val adapter = VideoAdapter(
+        onClick = { onItemClick(it) },
+        onLongClick = { toggleSelect(it) },
+        isSelected = { selected.contains(it.absolutePath) }
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_gallery)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        title = "Moje videá"
         recycler = findViewById(R.id.recycler)
         emptyText = findViewById(R.id.emptyText)
+        eventBar = findViewById(R.id.eventBar)
         val widthDp = resources.displayMetrics.widthPixels / resources.displayMetrics.density
         val span = (widthDp / 180f).toInt().coerceIn(2, 6)
         recycler.layoutManager = GridLayoutManager(this, span)
         recycler.adapter = adapter
+        filter = savedInstanceState?.getString("filter") ?: ALL
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (selected.isNotEmpty()) clearSelection()
+                else finish()
+            }
+        })
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("filter", filter)
     }
 
     override fun onResume() {
@@ -56,47 +106,187 @@ class GalleryActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        finish()
+        if (selected.isNotEmpty()) clearSelection() else finish()
         return true
     }
 
+    // ------------------------------------------------------------------ zoznam
+
     private fun reload() {
-        val files = VideoStore.list(this)
+        val all = VideoStore.list(this)
+        files = when (filter) {
+            ALL -> all
+            else -> all.filter { VideoStore.eventOf(this, it) == filter }
+        }
+        selected.retainAll(files.map { it.absolutePath }.toSet())
         adapter.submit(files)
         emptyText.visibility = if (files.isEmpty()) View.VISIBLE else View.GONE
-        val total = files.sumOf { it.length() }
-        supportActionBar?.subtitle = "${files.size} videí • ${Formatter.formatShortFileSize(this, total)}"
+        buildEventBar(all)
+        updateTitle()
     }
+
+    private fun buildEventBar(all: List<File>) {
+        eventBar.removeAllViews()
+        val dp = resources.displayMetrics.density
+        val counts = all.groupingBy { VideoStore.eventOf(this, it) }.eachCount()
+        val entries = ArrayList<Pair<String, String>>()
+        entries.add(ALL to "Všetko (${all.size})")
+        counts[""]?.let { entries.add("" to "Bez súťaže ($it)") }
+        for (e in VideoStore.events(this)) entries.add(e to "🏆 $e (${counts[e] ?: 0})")
+        for ((key, label) in entries) {
+            val tv = TextView(this).apply {
+                text = label
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
+                setBackgroundResource(if (key == filter) R.drawable.chip_bg_selected else R.drawable.chip_bg)
+                setOnClickListener {
+                    filter = key
+                    clearSelection()
+                    reload()
+                }
+                if (key != ALL && key.isNotEmpty()) setOnLongClickListener {
+                    confirmDeleteEvent(key)
+                    true
+                }
+            }
+            val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.marginEnd = (6 * dp).toInt()
+            eventBar.addView(tv, lp)
+        }
+    }
+
+    private fun updateTitle() {
+        if (selected.isNotEmpty()) {
+            title = "Vybrané: ${selected.size}"
+            supportActionBar?.subtitle = null
+        } else {
+            title = if (filter == ALL) "Moje videá" else if (filter.isEmpty()) "Bez súťaže" else filter
+            val total = files.sumOf { it.length() }
+            supportActionBar?.subtitle = "${files.size} videí • ${Formatter.formatShortFileSize(this, total)}"
+        }
+        invalidateOptionsMenu()
+    }
+
+    private fun onItemClick(f: File) {
+        if (selected.isNotEmpty()) toggleSelect(f) else openPlayer(f)
+    }
+
+    private fun toggleSelect(f: File) {
+        val p = f.absolutePath
+        if (!selected.remove(p)) selected.add(p)
+        adapter.refresh()
+        updateTitle()
+    }
+
+    private fun clearSelection() {
+        selected.clear()
+        adapter.refresh()
+        updateTitle()
+    }
+
+    private fun selectedFiles() = files.filter { selected.contains(it.absolutePath) }
+
+    // ------------------------------------------------------------------ menu
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        if (selected.isNotEmpty()) {
+            menu.add(0, M_SHARE, 1, "Zdieľať").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            if (selected.size == 2) menu.add(0, M_COMPARE, 2, "Porovnať").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            menu.add(0, M_DELETE, 3, "Vymazať").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            menu.add(0, M_MOVE, 4, "Presunúť do súťaže…")
+            if (selected.size == 1) menu.add(0, M_MORE, 5, "Ďalšie možnosti…")
+            menu.add(0, M_SELECT_ALL, 6, "Vybrať všetko")
+            menu.add(0, M_CLEAR, 7, "Zrušiť výber")
+        } else {
+            menu.add(0, M_RESULTS, 1, "Výsledky").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            menu.add(0, M_SELECT_ALL, 2, "Vybrať viac")
+            menu.add(0, M_IMPORT, 3, "Importovať videá z iného telefónu…")
+            menu.add(0, M_HELP, 4, "Návod")
+        }
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            M_SHARE -> share(selectedFiles())
+            M_COMPARE -> selectedFiles().let { if (it.size == 2) compare(it[0], it[1]) }
+            M_DELETE -> deleteFiles(selectedFiles())
+            M_MOVE -> moveFiles(selectedFiles())
+            M_MORE -> selectedFiles().firstOrNull()?.let { showOptions(it) }
+            M_CLEAR -> clearSelection()
+            M_SELECT_ALL -> {
+                files.forEach { selected.add(it.absolutePath) }
+                adapter.refresh()
+                updateTitle()
+            }
+            M_HELP -> startActivity(Intent(this, HelpActivity::class.java))
+            M_RESULTS -> startActivity(Intent(this, ResultsActivity::class.java))
+            M_IMPORT -> importLauncher.launch(arrayOf("video/*", "text/plain", "application/json", "application/octet-stream"))
+            else -> return super.onOptionsItemSelected(item)
+        }
+        return true
+    }
+
+    // ------------------------------------------------------------------ akcie
 
     private fun openPlayer(f: File) {
         startActivity(Intent(this, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_PATH, f.absolutePath))
     }
 
+    private fun compare(a: File, b: File) {
+        startActivity(
+            Intent(this, CompareActivity::class.java)
+                .putExtra(CompareActivity.EXTRA_A, a.absolutePath)
+                .putExtra(CompareActivity.EXTRA_B, b.absolutePath)
+        )
+    }
+
     private fun showOptions(f: File) {
-        val items = arrayOf("Prehrať", "Zdieľať", "Uložiť do galérie telefónu", "Premenovať", "Vymazať")
+        val others = files.filter { it != f }
+        val items = arrayListOf("Prehrať", "Zdieľať", "Uložiť do galérie telefónu", "Premenovať", "Značky…", "Presunúť do súťaže…", "Vymazať")
+        if (others.isNotEmpty()) items.add(1, "Porovnať s iným videom…")
         AlertDialog.Builder(this)
             .setTitle(f.name)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> openPlayer(f)
-                    1 -> share(f)
-                    2 -> copyToGallery(f)
-                    3 -> rename(f)
-                    4 -> delete(f)
+            .setItems(items.toTypedArray()) { _, which ->
+                when (items[which]) {
+                    "Prehrať" -> openPlayer(f)
+                    "Porovnať s iným videom…" -> pickOther(f, others)
+                    "Zdieľať" -> share(listOf(f))
+                    "Uložiť do galérie telefónu" -> copyToGallery(f)
+                    "Premenovať" -> rename(f)
+                    "Značky…" -> showMarkers(f)
+                    "Presunúť do súťaže…" -> moveFiles(listOf(f))
+                    "Vymazať" -> deleteFiles(listOf(f))
                 }
             }
             .show()
     }
 
-    private fun share(f: File) {
+    private fun pickOther(f: File, others: List<File>) {
+        AlertDialog.Builder(this)
+            .setTitle("Porovnať s…")
+            .setItems(others.map { it.name }.toTypedArray()) { _, w -> compare(f, others[w]) }
+            .show()
+    }
+
+    private fun share(list: List<File>) {
+        if (list.isEmpty()) return
         try {
-            val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", f)
-            val send = Intent(Intent.ACTION_SEND).apply {
-                type = "video/mp4"
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            val uris = ArrayList<Uri>(list.map { FileProvider.getUriForFile(this, "$packageName.fileprovider", it) })
+            val send = if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).apply {
+                    type = "video/mp4"
+                    putExtra(Intent.EXTRA_STREAM, uris[0])
+                }
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = "video/mp4"
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                }
             }
-            startActivity(Intent.createChooser(send, "Zdieľať video"))
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(Intent.createChooser(send, "Zdieľať videá"))
         } catch (e: Exception) {
             toast("Zdieľanie zlyhalo: ${e.message}")
         }
@@ -115,40 +305,173 @@ class GalleryActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun rename(f: File) {
+    private fun textInput(title: String, initial: String, onOk: (String) -> Unit) {
         val input = EditText(this).apply {
-            setText(f.nameWithoutExtension)
+            setText(initial)
             inputType = InputType.TYPE_CLASS_TEXT
             setSelectAllOnFocus(true)
         }
         val pad = (20 * resources.displayMetrics.density).toInt()
-        val box = android.widget.FrameLayout(this).apply { setPadding(pad, pad / 2, pad, 0); addView(input) }
+        val box = FrameLayout(this).apply {
+            setPadding(pad, pad / 2, pad, 0)
+            addView(input)
+        }
         AlertDialog.Builder(this)
-            .setTitle("Premenovať")
+            .setTitle(title)
             .setView(box)
-            .setPositiveButton("OK") { _, _ ->
-                val name = input.text.toString().trim().replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                if (name.isEmpty()) return@setPositiveButton
-                val target = File(f.parentFile, "$name.mp4")
-                when {
-                    target.exists() -> toast("Súbor s týmto názvom už existuje")
-                    f.renameTo(target) -> reload()
-                    else -> toast("Premenovanie zlyhalo")
+            .setPositiveButton("OK") { _, _ -> onOk(input.text.toString().trim()) }
+            .setNegativeButton("Zrušiť", null)
+            .show()
+    }
+
+    private fun rename(f: File) {
+        textInput("Premenovať", f.nameWithoutExtension) { raw ->
+            val name = VideoStore.safeName(raw)
+            if (name.isEmpty()) return@textInput
+            val target = File(f.parentFile, "$name.mp4")
+            when {
+                target.exists() -> toast("Súbor s týmto názvom už existuje")
+                VideoStore.moveVideo(f, target) -> reload()
+                else -> toast("Premenovanie zlyhalo")
+            }
+        }
+    }
+
+    private fun showMarkers(f: File) {
+        val markers = Markers.load(f)
+        if (markers.isEmpty()) {
+            toast("Video nemá žiadne značky")
+            return
+        }
+        val text = markers.joinToString("\n") { "${Markers.format(it.ms)}   ${it.text}" }
+        AlertDialog.Builder(this)
+            .setTitle("Značky – ${f.name}")
+            .setMessage(text)
+            .setPositiveButton("Zavrieť", null)
+            .setNeutralButton("Zdieľať text") { _, _ ->
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "Značky – ${f.name}")
+                    putExtra(Intent.EXTRA_TEXT, "${f.name}\n$text")
                 }
+                startActivity(Intent.createChooser(send, "Zdieľať značky"))
+            }
+            .show()
+    }
+
+    private fun moveFiles(list: List<File>) {
+        if (list.isEmpty()) return
+        val events = VideoStore.events(this)
+        val labels = ArrayList<String>()
+        labels.add("➕ Nová súťaž…")
+        labels.add("Bez súťaže")
+        labels.addAll(events.map { "🏆 $it" })
+        AlertDialog.Builder(this)
+            .setTitle("Presunúť ${list.size} videí do…")
+            .setItems(labels.toTypedArray()) { _, w ->
+                when (w) {
+                    0 -> textInput("Názov súťaže", "") { name -> if (name.isNotEmpty()) doMove(list, name) }
+                    1 -> doMove(list, "")
+                    else -> doMove(list, events[w - 2])
+                }
+            }
+            .show()
+    }
+
+    private fun doMove(list: List<File>, event: String) {
+        val dir = VideoStore.dir(this, event)
+        var ok = 0
+        for (f in list) {
+            var target = File(dir, f.name)
+            var i = 1
+            while (target.exists() && target.absolutePath != f.absolutePath) {
+                target = File(dir, "${f.nameWithoutExtension}_$i.mp4")
+                i++
+            }
+            if (VideoStore.moveVideo(f, target)) ok++
+        }
+        toast("Presunuté: $ok")
+        clearSelection()
+        reload()
+    }
+
+    private fun deleteFiles(list: List<File>) {
+        if (list.isEmpty()) return
+        AlertDialog.Builder(this)
+            .setTitle(if (list.size == 1) "Vymazať video?" else "Vymazať ${list.size} videí?")
+            .setMessage(list.joinToString("\n") { it.name }.take(600))
+            .setPositiveButton("Vymazať") { _, _ ->
+                var n = 0
+                for (f in list) if (VideoStore.deleteVideo(f)) n++
+                toast("Vymazané: $n")
+                clearSelection()
+                reload()
             }
             .setNegativeButton("Zrušiť", null)
             .show()
     }
 
-    private fun delete(f: File) {
+    private fun confirmDeleteEvent(event: String) {
+        val dir = VideoStore.dir(this, event)
+        val count = dir.listFiles()?.count { it.extension.equals("mp4", true) } ?: 0
+        if (count > 0) {
+            toast("Súťaž „$event“ obsahuje $count videí – najprv ich presuň alebo vymaž.")
+            return
+        }
         AlertDialog.Builder(this)
-            .setTitle("Vymazať video?")
-            .setMessage(f.name)
-            .setPositiveButton("Vymazať") { _, _ ->
-                if (f.delete()) reload() else toast("Vymazanie zlyhalo")
+            .setTitle("Odstrániť prázdnu súťaž „$event“?")
+            .setPositiveButton("Odstrániť") { _, _ ->
+                dir.listFiles()?.forEach { it.delete() }
+                dir.delete()
+                if (filter == event) filter = ALL
+                val p = PreferenceManager.getDefaultSharedPreferences(this)
+                if (p.getString("event_name", "") == event) p.edit().putString("event_name", "").apply()
+                reload()
             }
             .setNegativeButton("Zrušiť", null)
             .show()
+    }
+
+    /**
+     * Import videí (a ich súborov .markers.txt / .info.json / .splits.txt) z iného telefónu
+     * do aktuálne zobrazenej súťaže.
+     */
+    private fun importFiles(uris: List<Uri>) {
+        val event = if (filter == ALL) {
+            PreferenceManager.getDefaultSharedPreferences(this).getString("event_name", "") ?: ""
+        } else filter
+        val dir = VideoStore.dir(this, event)
+        val main = Handler(Looper.getMainLooper())
+        toast("Importujem ${uris.size} súborov…")
+        val appCtx = applicationContext
+        Thread {
+            var ok = 0
+            for (u in uris) {
+                try {
+                    var name = "import_${System.currentTimeMillis()}.mp4"
+                    appCtx.contentResolver.query(u, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                        if (c.moveToFirst()) c.getString(0)?.let { name = it }
+                    }
+                    name = name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    val lower = name.lowercase(Locale.ROOT)
+                    val allowed = lower.endsWith(".mp4") || Sidecars.SUFFIXES.any { lower.endsWith(it) }
+                    if (!allowed) continue
+                    var target = File(dir, name)
+                    if (target.exists() && lower.endsWith(".mp4")) {
+                        target = File(dir, name.removeSuffix(".mp4").removeSuffix(".MP4") + "_import.mp4")
+                    }
+                    appCtx.contentResolver.openInputStream(u)?.use { input ->
+                        target.outputStream().use { input.copyTo(it) }
+                    }
+                    ok++
+                } catch (_: Exception) {
+                }
+            }
+            main.post {
+                toast("Importované: $ok")
+                reload()
+            }
+        }.start()
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
@@ -156,7 +479,8 @@ class GalleryActivity : AppCompatActivity() {
 
 class VideoAdapter(
     private val onClick: (File) -> Unit,
-    private val onLongClick: (File) -> Unit
+    private val onLongClick: (File) -> Unit,
+    private val isSelected: (File) -> Boolean
 ) : RecyclerView.Adapter<VideoAdapter.VH>() {
 
     private var items: List<File> = emptyList()
@@ -165,6 +489,8 @@ class VideoAdapter(
     class VH(v: View) : RecyclerView.ViewHolder(v) {
         val thumb: ImageView = v.findViewById(R.id.thumb)
         val duration: TextView = v.findViewById(R.id.duration)
+        val markers: TextView = v.findViewById(R.id.markers)
+        val check: TextView = v.findViewById(R.id.check)
         val name: TextView = v.findViewById(R.id.name)
         val info: TextView = v.findViewById(R.id.info)
     }
@@ -174,6 +500,9 @@ class VideoAdapter(
         items = list
         notifyDataSetChanged()
     }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun refresh() = notifyDataSetChanged()
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
         VH(LayoutInflater.from(parent.context).inflate(R.layout.item_video, parent, false))
@@ -185,6 +514,13 @@ class VideoAdapter(
         val ctx = holder.itemView.context
         holder.name.text = f.name
         holder.info.text = "${dateFmt.format(Date(f.lastModified()))} • ${Formatter.formatShortFileSize(ctx, f.length())}"
+        val mc = Markers.load(f).size
+        holder.markers.text = if (mc > 0) "📍$mc" else ""
+        holder.markers.visibility = if (mc > 0) View.VISIBLE else View.GONE
+        val sel = isSelected(f)
+        holder.check.visibility = if (sel) View.VISIBLE else View.GONE
+        holder.itemView.alpha = 1f
+        holder.thumb.alpha = if (sel) 0.6f else 1f
         ThumbLoader.load(f, holder.thumb, holder.duration)
         holder.itemView.setOnClickListener { onClick(f) }
         holder.itemView.setOnLongClickListener {

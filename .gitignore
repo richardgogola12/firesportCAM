@@ -1,0 +1,14 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/captures
+.externalNativeBuild
+.cxx
+
+# podpisový kľúč – nikdy nenahrávať do verejného repozitára
+*.jks
+keystore.properties

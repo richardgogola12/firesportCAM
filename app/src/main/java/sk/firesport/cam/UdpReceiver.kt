@@ -12,20 +12,31 @@ import java.net.NetworkInterface
 import java.net.SocketAddress
 import java.nio.charset.Charset
 
-/** Prijíma UDP správy na pozadí a posiela ich ako text do [onMessage]. */
+/**
+ * Prijíma UDP správy na pozadí a posiela ich ako text do [onMessage].
+ *
+ * Automatické vyhľadanie (aby vysielač, napr. ESP01, nemusel poznať IP telefónu):
+ *  - telefón každé 2 s pošle broadcast `FSCAM:HELLO:<port>:<názov>` na [announcePort],
+ *  - na správu `FSCAM:DISCOVER` odpovie odosielateľovi `FSCAM:HERE:<port>:<názov>`.
+ */
 class UdpReceiver(
     ctx: Context,
     private val port: Int,
     private val charset: Charset,
     private val multicastGroup: String,
-    private val onMessage: (String) -> Unit,
-    private val onStatus: (String) -> Unit
+    private val onMessage: (String, String) -> Unit,
+    private val onStatus: (String) -> Unit,
+    private val announcePort: Int = 0,
+    private val deviceName: String = ""
 ) {
     private val appCtx = ctx.applicationContext
     @Volatile private var running = false
     @Volatile private var socket: DatagramSocket? = null
     private var thread: Thread? = null
+    private var announcer: Thread? = null
     private var lock: WifiManager.MulticastLock? = null
+
+    private fun name() = deviceName.replace(":", " ").ifEmpty { android.os.Build.MODEL ?: "telefon" }
 
     fun start() {
         running = true
@@ -41,6 +52,32 @@ class UdpReceiver(
             isDaemon = true
             start()
         }
+        if (announcePort in 1..65535) {
+            announcer = Thread({ announceLoop() }, "udp-announce").apply {
+                isDaemon = true
+                start()
+            }
+        }
+    }
+
+    private fun announceLoop() {
+        while (running) {
+            val s = socket
+            if (s != null) {
+                val data = "FSCAM:HELLO:$port:${name()}".toByteArray(Charsets.UTF_8)
+                for (addr in NetUtil.broadcastAddresses()) {
+                    try {
+                        s.send(DatagramPacket(data, data.size, addr, announcePort))
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+            try {
+                Thread.sleep(2000)
+            } catch (_: InterruptedException) {
+                break
+            }
+        }
     }
 
     private fun loop() {
@@ -53,7 +90,18 @@ class UdpReceiver(
                 while (running) {
                     val p = DatagramPacket(buf, buf.size)
                     s.receive(p)
-                    onMessage(String(p.data, p.offset, p.length, charset))
+                    val text = String(p.data, p.offset, p.length, charset)
+                    val from = p.address?.hostAddress ?: ""
+                    if (text.startsWith("FSCAM:DISCOVER")) {
+                        // odpoveď na vyhľadávanie – vysielač sa dozvie IP a port telefónu
+                        try {
+                            val reply = "FSCAM:HERE:$port:${name()}".toByteArray(Charsets.UTF_8)
+                            s.send(DatagramPacket(reply, reply.size, p.address, p.port))
+                        } catch (_: Exception) {
+                        }
+                        continue
+                    }
+                    onMessage(text, from)
                 }
             } catch (e: Exception) {
                 if (!running) break
@@ -79,6 +127,7 @@ class UdpReceiver(
         if (group.isNotEmpty()) {
             val ms = MulticastSocket(null as SocketAddress?)
             ms.reuseAddress = true
+            ms.broadcast = true
             ms.bind(InetSocketAddress(port))
             ms.joinGroup(InetAddress.getByName(group))
             return ms
@@ -98,6 +147,8 @@ class UdpReceiver(
         }
         thread?.interrupt()
         thread = null
+        announcer?.interrupt()
+        announcer = null
         try {
             lock?.release()
         } catch (_: Exception) {
@@ -107,6 +158,26 @@ class UdpReceiver(
 }
 
 object NetUtil {
+    /** Broadcast adresy všetkých sietí telefónu (Wi-Fi, hotspot) + 255.255.255.255. */
+    fun broadcastAddresses(): List<InetAddress> {
+        val out = LinkedHashSet<InetAddress>()
+        try {
+            NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
+                .filter { it.isUp && !it.isLoopback }
+                .forEach { ni ->
+                    ni.interfaceAddresses.forEach { ia ->
+                        if (ia.address is Inet4Address) ia.broadcast?.let { out.add(it) }
+                    }
+                }
+        } catch (_: Exception) {
+        }
+        try {
+            out.add(InetAddress.getByName("255.255.255.255"))
+        } catch (_: Exception) {
+        }
+        return out.toList()
+    }
+
     /** IPv4 adresy zariadenia (Wi-Fi, hotspot, ethernet...). */
     fun ipAddresses(): List<String> = try {
         NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()

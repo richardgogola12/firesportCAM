@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Firesport Cam – návod</title>
+<style>
+  body { margin: 0; padding: 16px 18px 40px; background: #121212; color: #e8e8e8;
+         font-family: sans-serif; font-size: 16px; line-height: 1.55; }
+  h1 { font-size: 24px; margin: 4px 0 4px; }
+  h2 { font-size: 19px; margin: 28px 0 8px; padding-top: 12px; border-top: 1px solid #333; color: #ffab91; }
+  h3 { font-size: 16px; margin: 16px 0 4px; color: #fff; }
+  p, li { color: #d8d8d8; }
+  ul, ol { padding-left: 22px; margin: 6px 0; }
+  li { margin: 3px 0; }
+  code { background: #2a2a2a; padding: 1px 6px; border-radius: 4px; font-size: 15px; color: #fff59d; }
+  .tip { background: #1e2a33; border-left: 4px solid #4fc3f7; padding: 8px 12px; border-radius: 6px; margin: 10px 0; }
+  .warn { background: #33261e; border-left: 4px solid #ff7043; padding: 8px 12px; border-radius: 6px; margin: 10px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 15px; }
+  td, th { border: 1px solid #333; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #1f1f1f; }
+  .lead { color: #bbb; margin-top: 0; }
+  nav a { color: #80cbc4; text-decoration: none; }
+  nav li { margin: 2px 0; }
+</style>
+</head>
+<body>
+
+<h1>🔥 Firesport Cam – návod</h1>
+<p class="lead">Nahrávanie pokusov s časom z časomiery priamo vo videu, okamžitý replay a porovnanie pokusov.</p>
+
+<nav>
+<ol>
+  <li><a href="#start">Rýchly štart</a></li>
+  <li><a href="#kamera">Obrazovka kamery</a></li>
+  <li><a href="#manual">Manuálne nastavenia kamery</a></li>
+  <li><a href="#overlay">Overlaye a logo</a></li>
+  <li><a href="#udp">Pripojenie časomiery (UDP)</a></li>
+  <li><a href="#auto">Automatika: štart/stop, značky, replay</a></li>
+  <li><a href="#predstih">Predstih nahrávania</a></li>
+  <li><a href="#galeria">Galéria a súťaže</a></li>
+  <li><a href="#prehravac">Prehrávač</a></li>
+  <li><a href="#porovnanie">Porovnanie dvoch pokusov</a></li>
+  <li><a href="#dialkove">Diaľkové ovládanie</a></li>
+  <li><a href="#profily">Profily nastavení</a></li>
+  <li><a href="#pozadie">Nahrávanie na pozadí, batéria a miesto</a></li>
+  <li><a href="#druzstva">Družstvá, výsledky a medzičasy</a></li>
+  <li><a href="#kamery">Viac kamier a OBS</a></li>
+  <li><a href="#sutaz">Kontrolný zoznam pred súťažou</a></li>
+  <li><a href="#problemy">Riešenie problémov</a></li>
+</ol>
+</nav>
+
+<h2 id="start">1. Rýchly štart</h2>
+<ol>
+  <li>Pri prvom spustení povoľ <b>kameru</b>, <b>mikrofón</b> a <b>upozornenia</b>.</li>
+  <li>Telefón a časomieru pripoj do <b>rovnakej siete</b> (Wi-Fi alebo hotspot telefónu).</li>
+  <li>V <b>⚙ Nastavenia → 📡 UDP</b> zisti IP adresu a port telefónu (predvolene <code>5000</code>) a nastav ich v časomiere.</li>
+  <li>V <b>⚙ → 🏆 Súťaž</b> zadaj názov <b>súťaže</b> a zoznam družstiev – videá sa budú ukladať do jej priečinka.</li>
+  <li>Ťukni na červené tlačidlo ⏺ (alebo tlačidlo hlasitosti) a nahrávaj.</li>
+</ol>
+<div class="tip">Ak chceš, aby časomiera sama spúšťala a zastavovala nahrávanie, pozri kapitolu <a href="#auto">Automatika</a>.</div>
+
+<h2 id="kamera">2. Obrazovka kamery</h2>
+<table>
+  <tr><th>Tlačidlo</th><th>Funkcia</th></tr>
+  <tr><td>⏺</td><td>Spustí / zastaví nahrávanie. To isté robia tlačidlá hlasitosti.</td></tr>
+  <tr><td>📍</td><td>Počas nahrávania pridá značku (moment, ku ktorému sa neskôr rýchlo vrátiš).</td></tr>
+  <tr><td>🔄</td><td>Prepne na ďalšiu kameru (predná, zadné, širokouhlá…).</td></tr>
+  <tr><td>🔦</td><td>Zapne / vypne svetlo.</td></tr>
+  <tr><td>🎛</td><td>Panel manuálnych nastavení (zoom, expozícia, ostrenie, ISO, uzávierka, biela).</td></tr>
+  <tr><td>🎞</td><td>Galéria videí.</td></tr>
+  <tr><td>⚙</td><td>Nastavenia.</td></tr>
+</table>
+<h3>Gestá</h3>
+<ul>
+  <li><b>Ťuknutie</b> do obrazu – zaostrenie a meranie expozície na dané miesto.</li>
+  <li><b>Štipnutie</b> dvoma prstami – zoom.</li>
+  <li><b>Potiahnutie overlayu alebo loga</b> – presunie ho kamkoľvek (aj počas nahrávania). Pozícia sa uloží.</li>
+</ul>
+<h3>Stavový riadok hore</h3>
+<p>Kamera, rozlíšenie, zoom, súťaž a profil; batéria, teplota, voľné miesto a odhad zostávajúcich minút,
+mikrofón; stav UDP, IP adresa a posledná prijatá správa. Počas nahrávania je zobrazená dĺžka záznamu,
+<b>ukazovateľ hlasitosti mikrofónu</b> 🎤▮▮▮▯ a počet značiek 📍.</p>
+<h3>Otáčanie</h3>
+<p>Aplikácia sa otáča podľa telefónu (na výšku aj na šírku). <b>Počas nahrávania sa orientácia zamkne</b>,
+aby sa video neprerušilo. Pevnú orientáciu nastavíš v <b>⚙ → Ostatné</b>.</p>
+
+<h2 id="manual">3. Manuálne nastavenia kamery</h2>
+<p>Tlačidlo 🎛 otvorí panel s kartami:</p>
+<ul>
+  <li><b>Zoom</b> – plynulé priblíženie.</li>
+  <li><b>Expozícia</b> – zosvetlenie / stmavenie (EV). <i>Zámok AE</i> zafixuje expozíciu.</li>
+  <li><b>Ostrenie</b> – <i>Auto</i> alebo ručná vzdialenosť (∞ … blízko). Pri ručnom ostrení je ťuknutie vypnuté.</li>
+  <li><b>ISO</b> a <b>Uzávierka</b> – ručná expozícia (ak ju telefón podporuje). Na ostré pohyby použi krátky čas (1/500 a menej).</li>
+  <li><b>Vyváženie bielej</b> – predvoľby (denné svetlo, zamračené, žiarovka…) a <i>Zámok WB</i>.</li>
+</ul>
+<p>Ďalšie voľby sú v <b>⚙ → 📷 Kamera</b> (antiflicker 50 Hz pri umelom osvetlení, redukcia šumu, doostrenie)
+a <b>⚙ → 🎬 Video</b> (rozlíšenie, snímky za sekundu, dátový tok, zvuk, stabilizácia).</p>
+<div class="tip"><b>Spomalené zábery:</b> nastav 60 fps. Hodnoty 90 a 120 fps fungujú iba na telefónoch,
+ktoré ich podporujú v bežnom režime – ak nie, stavový riadok ukáže, akú frekvenciu kamera reálne použila.</div>
+
+<h2 id="overlay">4. Overlaye a logo</h2>
+<p>Do videa sa vpaľujú až tri textové overlaye a logo. Každý má vlastnú kartu v nastaveniach so
+<b>živým náhľadom</b> – overlay v ňom môžeš priamo posúvať prstom.</p>
+<table>
+  <tr><th>Overlay</th><th>Typické použitie</th></tr>
+  <tr><td>🅰 Overlay 1</td><td>čas ľavého terča / celkový čas</td></tr>
+  <tr><td>🅱 Overlay 2</td><td>čas pravého terča</td></tr>
+  <tr><td>ℹ Overlay 3</td><td>informačný riadok: súťaž, dátum, čas, družstvo</td></tr>
+  <tr><td>🖼 Logo</td><td>logo klubu alebo súťaže (PNG s priehľadným pozadím)</td></tr>
+</table>
+<p>Zobrazený text = <b>prefix</b> + <b>text z UDP</b> (alebo <b>predvolený text</b>, kým nič nepríde) + <b>sufix</b>.
+Nastaviť sa dá veľkosť, farba a typ písma, tučné písmo, obrys, farba a krytie (priesvitnosť) pozadia, okraj, zaoblenie a pozícia.</p>
+<h3>Zástupné texty</h3>
+<table>
+  <tr><td><code>{datum}</code></td><td>dnešný dátum</td></tr>
+  <tr><td><code>{cas}</code> / <code>{hhmm}</code></td><td>aktuálny čas so sekundami / bez sekúnd</td></tr>
+  <tr><td><code>{sutaz}</code></td><td>názov súťaže</td></tr>
+  <tr><td><code>{profil}</code></td><td>názov aktívneho profilu</td></tr>
+  <tr><td><code>{rec}</code></td><td>dĺžka aktuálneho nahrávania</td></tr>
+  <tr><td><code>\n</code></td><td>nový riadok</td></tr>
+</table>
+<p>Príklad pre Overlay 3: <code>{sutaz} • {datum} {cas}</code></p>
+
+<h2 id="udp">5. Pripojenie časomiery (UDP)</h2>
+<p>Aplikácia počúva na zvolenom porte (predvolene <code>5000</code>) na všetkých sieťach telefónu.
+Časomiera posiela text ako UDP správu na <b>IP telefónu</b> (alebo broadcast <code>255.255.255.255</code>).</p>
+<h3>Ako rozdeliť text do overlayov</h3>
+<table>
+  <tr><th>Režim</th><th>Správa</th><th>Výsledok</th></tr>
+  <tr><td>Rovnaký text</td><td><code>16.84</code></td><td>overlay 1 aj 2 = 16.84</td></tr>
+  <tr><td>Rozdeliť oddeľovačom <code>;</code></td><td><code>L 16.84;P 17.02;Družstvo A</code></td><td>1 = L 16.84, 2 = P 17.02, 3 = Družstvo A</td></tr>
+  <tr><td>Podľa predpony</td><td><code>1:16.84</code> / <code>2:17.02</code></td><td>každá správa ide do svojho overlayu</td></tr>
+  <tr><td>Iba overlay 1 / 2 / 3</td><td><code>16.84</code></td><td>iba do zvoleného</td></tr>
+</table>
+<p>Ďalšie voľby: kódovanie (pri diakritike zo starších systémov skús <i>Windows-1250</i>), timeout
+(po koľkých sekundách bez správy sa vráti predvolený text), maximálna dĺžka, multicast.</p>
+<div class="tip">Test z počítača: <code>python3 tools/udp_test_sender.py IP_TELEFONU</code> – posiela bežiace stopky.</div>
+
+<h3>Vymazanie času (CLEAR)</h3>
+<p>Tlačidlo <b>✕ Vymazať čas</b> v kamere (podržaním len jeden overlay), tlačidlo na webovom ovládaní
+alebo príkaz z časomiery <code>CLEAR</code> / <code>CLEAR:1</code>. Podľa nastavenia sa overlay skryje,
+kým nepríde nový čas, alebo sa ukáže predvolený text (⚙ → UDP → Po vymazaní).</p>
+<h3>ESP01 a neznáma IP adresa telefónu</h3>
+<p>Telefón sa v sieti <b>sám ohlasuje</b> každé 2 s (<code>FSCAM:HELLO:5000:názov</code> na port 5001)
+a odpovedá na <code>FSCAM:DISCOVER</code>. Vysielač si tak IP adresu zistí sám a posiela časy priamo telefónu;
+kým žiadny nepozná, posiela ich broadcastom do celej siete. Hotový program pre ESP-01 je v projekte
+<code>tools/esp01_firesport/esp01_firesport.ino</code> – vo vlastnom kóde stačí volať <code>sendText("…")</code>.
+Wi-Fi sa na ESP nastavuje cez mobil (sieť „FiresportCam-ESP“), takže funguje s akýmkoľvek routerom. Program rozumie správam tréningovej časomiery: v režime LP+PP posiela
+<code>ľavý;pravý</code> čas (každý sa zastaví pri svojom terči – časomiera musí posielať <code>STOPL:</code>/<code>STOPP:</code>,
+upravený program je v <code>tools/casomiera/</code>), v režime LP jeden čas a v režime odpočtu zostávajúci čas.
+V aplikácii nastav <b>Rozdeliť oddeľovačom</b> s oddeľovačom <code>;</code>.
+V stavovom riadku kamery je IP vysielača, od ktorého prišla posledná správa.</p>
+<div class="warn">Na routeri nesmie byť zapnutá <b>izolácia klientov</b> (AP / client isolation, často pri sieti pre hostí) –
+vtedy spolu zariadenia vôbec nekomunikujú. Najistejšie je pripojiť ESP na <b>hotspot telefónu</b>.</div>
+
+<h2 id="auto">6. Automatika: štart/stop, značky, replay</h2>
+<h3>Príkazy z časomiery</h3>
+<table>
+  <tr><td><code>START</code></td><td>spustí nahrávanie</td></tr>
+  <tr><td><code>STOP</code></td><td>zastaví nahrávanie</td></tr>
+  <tr><td><code>MARK</code> alebo <code>MARK:text</code></td><td>pridá značku (s textom)</td></tr>
+</table>
+<p>Príkazy sa dajú premenovať v <b>⚙ → ⚡ Automatika</b> a nezobrazujú sa v overlayi.</p>
+<h3>Automatické zastavenie</h3>
+<ul>
+  <li><b>X sekúnd po zastavení času</b> – napr. 5 s po tom, čo sa čas v overlayi prestane meniť. Ideálne pre pokusy.</li>
+  <li><b>Maximálna dĺžka nahrávky</b> – poistka, ak by STOP neprišiel.</li>
+</ul>
+<h3>Značky</h3>
+<p>Značka = čas vo videu + text. V režime <b>„Keď sa čas zastaví“</b> aplikácia sama rozpozná finálny čas
+(hodnota sa nemení aspoň 1 s) a vytvorí značku presne v momente, keď sa čas zastavil. Nulové časy (0.00)
+sa ignorujú. Značky sa ukladajú aj ako textový súbor vedľa videa – dajú sa zdieľať z galérie.</p>
+<h3>Replay po pokuse</h3>
+<p>Po zapnutí <b>Okamžité prehratie</b> sa po zastavení nahrávania video hneď otvorí v prehrávači –
+napr. 3 s pred prvou značkou a v spomalení 0,5×.</p>
+
+<h2 id="predstih">7. Predstih nahrávania</h2>
+<p>V <b>⚙ → 🎬 Video → Predstih nahrávania</b>. Kamera stále nahráva do pamäte a po stlačení ⏺
+sa k videu pridá aj posledných X sekúnd pred stlačením – štart pokusu sa nezmešká, aj keď
+nahrávanie spustíš neskoro.</p>
+<div class="warn">Predstih viac zohrieva telefón a míňa batériu. Po zastavení sa video chvíľu spája
+(zobrazí sa „Ukladám…“). Počas predstihu hore svieti „◌ predstih pripravený“.</div>
+
+<h2 id="galeria">8. Galéria a súťaže</h2>
+<ul>
+  <li>Hore sú <b>súťaže</b> ako záložky – ťuknutím filtruješ. Podržaním prázdnej súťaže ju odstrániš.</li>
+  <li>Ťuknutie na video = prehrať. <b>Podržanie = výber</b> viacerých videí.</li>
+  <li>S výberom: <b>Zdieľať</b>, <b>Porovnať</b> (2 videá), <b>Vymazať</b>, <b>Presunúť do súťaže</b>, ďalšie možnosti
+      (premenovať, značky, uložiť do galérie telefónu).</li>
+  <li>📍 na náhľade = počet značiek vo videu.</li>
+</ul>
+
+<h2 id="prehravac">9. Prehrávač</h2>
+<ul>
+  <li><b>Rýchlosť</b> 0,1× až 2×, <b>krokovanie po snímkach</b> ◀ ▶, skok ±1 s, čas s milisekundami.</li>
+  <li><b>Zoom</b> štipnutím (až 10×) a posun prstom; tlačidlá Zoom +/−/1:1.</li>
+  <li><b>Značky</b> – ťuknutím skočíš 1 s pred značku; ⏮ ⏭ prepína medzi značkami; <i>📍+ značka</i> pridá novú;
+      podržaním značku premenuješ alebo vymažeš.</li>
+  <li><b>Výrez</b> – nastav <i>✂ začiatok [</i> a <i>] koniec ✂</i> (podržaním zrušíš) a ťukni <i>💾 Uložiť výrez</i>.
+      Vznikne nové video s príponou <code>_vyrez</code>.</li>
+  <li>🔁 slučka – opakované prehrávanie.</li>
+</ul>
+
+<h2 id="porovnanie">10. Porovnanie dvoch pokusov</h2>
+<p>V galérii vyber dve videá (podržanie) a daj <b>Porovnať</b>. Videá sa zobrazia vedľa seba (na výšku pod sebou)
+a ovládajú sa spoločne. <b>📍 zarovnať na značky</b> nastaví obe 3 s pred ich prvou značkou.
+Tlačidlami <i>A ◀ ▶</i> a <i>B ◀ ▶</i> doladíš každé video zvlášť po snímkach.</p>
+
+<h2 id="dialkove">11. Diaľkové ovládanie</h2>
+<ol>
+  <li>Zapni <b>⚙ → 🌐 Diaľkové → Diaľkové ovládanie</b> (voliteľne nastav PIN).</li>
+  <li>Na druhom mobile alebo PC v rovnakej sieti otvor v prehliadači adresu zobrazenú v nastaveniach, napr. <code>http://192.168.1.50:8080</code>.</li>
+  <li>Uvidíš živý náhľad a tlačidlá <b>Nahrávať</b>, <b>Stop</b>, <b>Značka</b>.</li>
+</ol>
+<p>Plynulosť (5–25 snímok/s) a veľkosť náhľadu nastavíš v tej istej karte. Ak obraz seká,
+zníž veľkosť na <i>Malá</i> alebo plynulosť na 10 snímok/s – pomáha to hlavne pri slabšej Wi-Fi.</p>
+
+<h2 id="profily">12. Profily nastavení</h2>
+<p>V <b>⚙ → Ostatné → Profily</b> uložíš všetky aktuálne nastavenia pod názvom (napr. „Súťaž večer“, „Tréning“)
+a neskôr ich jedným ťuknutím načítaš. Názov aktívneho profilu je v stavovom riadku (👤).</p>
+
+<h2 id="pozadie">13. Nahrávanie na pozadí, batéria a miesto</h2>
+<ul>
+  <li><b>⚙ → Ostatné → Nahrávať aj na pozadí</b> – nahrávanie pokračuje pri zhasnutej obrazovke, hovore alebo
+      prepnutí aplikácie. V lište je upozornenie „Firesport Cam nahráva“. <i>(Experimentálne – vyskúšaj na svojom telefóne.)</i></li>
+  <li>Aplikácia upozorní na <b>slabú batériu</b> (pod 15 %), <b>málo miesta</b> (menej ako 10 minút záznamu)
+      a <b>prehrievanie</b>.</li>
+</ul>
+
+<h2 id="druzstva">Družstvá, výsledky a medzičasy</h2>
+<h3>Družstvo ku každému pokusu</h3>
+<ol>
+  <li>V <b>⚙ → 🏆 Súťaž</b> vyplň názov súťaže a zoznam družstiev (jedno na riadok).</li>
+  <li>Pred pokusom ťukni v kamere na <b>Družstvo</b> a vyber ho (alebo pridaj nové). Zobrazí sa aj číslo pokusu.</li>
+  <li>Časomiera môže družstvo nastaviť sama príkazom <code>TEAM:Dolany</code>.</li>
+</ol>
+<p>Video sa uloží s názvom podľa družstva, výsledného času a pokusu, napr.
+<code>Dolany_16-84_2.pokus_20260929_101500.mp4</code>. V overlayoch môžeš použiť <code>{druzstvo}</code> a <code>{pokus}</code>.</p>
+<h3>Výsledková tabuľka</h3>
+<p>Galéria → <b>Výsledky</b> (alebo ⚙ → 🏆 Súťaž). Pokusy sú zoradené podľa výsledného času – horšieho z časov
+ľavého a pravého terča. Ťuknutím na riadok prehráš pokus, <b>podržaním opravíš</b> družstvo, čas alebo zadáš
+poznámku (napr. <code>NP</code> = neplatný pokus). V menu: <b>Iba najlepší pokus družstva</b>,
+<b>Export do Excelu (CSV)</b> a <b>Zdieľať ako text</b>.</p>
+<h3>Medzičasy</h3>
+<p>V prehrávači je riadok <b>⏱ označiť: Štart</b>. Pusti video, zastav v momente fázy a ťukni –
+tlačidlo sa posunie na ďalšiu fázu (Rozvinutie, Spoj, Prúdnica, Terč). Aplikácia vypíše trvanie každej fázy
+a porovnanie s najlepším pokusom toho istého družstva (napr. <code>+0.21</code> = o 0,21 s pomalšie).
+Názvy fáz nastavíš v ⚙ → 🏆 Súťaž.</p>
+
+<h2 id="kamery">Viac kamier a OBS</h2>
+<h3>Viac telefónov naraz</h3>
+<ol>
+  <li>Všetky telefóny pripoj do jednej siete a nastav rovnaký UDP port.</li>
+  <li>Na jednom v <b>⚙ → 🎥 Kamery a OBS</b> nastav úlohu <b>Hlavná</b>, na ostatných <b>Vedľajšia</b>.
+      Každému daj názov (Štart, Terče, Bok…).</li>
+  <li>Keď na hlavnom spustíš / zastavíš nahrávanie alebo zmeníš družstvo, urobia to aj ostatné telefóny.</li>
+</ol>
+<p>Ak časomiera posiela <code>START</code>/<code>STOP</code>, spustí všetky telefóny sama – hlavný vtedy netreba.
+Videá z iných telefónov prenesieš do jedného cez <b>Galéria → Importovať videá</b> (označ video aj jeho súbory
+<code>.info.json</code> a <code>.markers.txt</code>) a porovnáš ich vedľa seba.</p>
+<h3>Živé vysielanie do OBS</h3>
+<ol>
+  <li>Zapni <b>Diaľkové ovládanie</b> (⚙ → 🎥 Kamery a OBS) a nastav veľkosť <b>HD</b> a plynulosť <b>25 snímok/s</b>.</li>
+  <li>V OBS pridaj zdroj <b>Prehliadač</b> (Browser Source) s adresou <code>http://IP_TELEFONU:8080/obs</code>
+      (s PIN-om: <code>/obs?pin=1234</code>), šírka 1280, výška 720.</li>
+  <li>Každý telefón je samostatný zdroj – v OBS medzi nimi prepínaš scény.</li>
+</ol>
+<div class="warn">Do OBS ide <b>iba obraz</b> (s overlaymi), bez zvuku. Zvuk pridaj v OBS z mikrofónu pri počítači.
+Oneskorenie je asi 0,2–0,5 s. Obraz ide, iba kým je aplikácia na telefóne otvorená.</div>
+
+<h2 id="sutaz">14. Kontrolný zoznam pred súťažou</h2>
+<ol>
+  <li>Nabitý telefón (ideálne powerbanka), dosť miesta (stavový riadok ukazuje minúty).</li>
+  <li>Stojan, orientácia na šírku, zadná kamera.</li>
+  <li>Názov súťaže zadaný, správny profil načítaný.</li>
+  <li>Časomiera posiela na správnu IP a port – v stavovom riadku vidno „posledná správa“.</li>
+  <li>Antiflicker 50 Hz pri umelom osvetlení, 60 fps pre spomalené zábery.</li>
+  <li>Automatika: príkazy START/STOP alebo „zastaviť X s po zastavení času“, replay podľa potreby.</li>
+  <li>Skúšobný pokus – skontroluj video, overlaye, značky a zvuk.</li>
+</ol>
+
+<h2 id="problemy">15. Riešenie problémov</h2>
+<table>
+  <tr><th>Problém</th><th>Riešenie</th></tr>
+  <tr><td>Neprichádza text z UDP</td><td>Rovnaká sieť? Správna IP a port? Niektoré routery blokujú komunikáciu medzi zariadeniami –
+      skús hotspot telefónu. Firewall na PC povoliť pre UDP.</td></tr>
+  <tr><td>Zlá diakritika</td><td>⚙ → UDP → Kódovanie: skús Windows-1250 alebo ISO-8859-2.</td></tr>
+  <tr><td>„overlay nedostupný“</td><td>Telefón nepodporuje vpaľovanie overlayu; video sa nahrá bez neho. Skús nižšie rozlíšenie.</td></tr>
+  <tr><td>Video sa zastaví pri otočení</td><td>Počas nahrávania je orientácia zamknutá – otáčaj pred spustením.</td></tr>
+  <tr><td>Nahrávanie sa preruší pri zhasnutí</td><td>Zapni „Nahrávať aj na pozadí“ alebo „Nevypínať obrazovku“.</td></tr>
+  <tr><td>Nevidím videá v galérii telefónu</td><td>Videá sú v priečinku aplikácie. Použi „Uložiť do galérie telefónu“ alebo zapni automatické kopírovanie
+      (⚙ → Video).</td></tr>
+  <tr><td>Po odinštalovaní zmizli videá</td><td>Priečinok aplikácie sa pri odinštalovaní maže – dôležité videá vopred ulož do galérie alebo zdieľaj.</td></tr>
+</table>
+
+</body>
+</html>

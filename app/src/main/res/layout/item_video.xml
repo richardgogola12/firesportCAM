@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/itemRoot"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
@@ -29,6 +30,31 @@
             android:paddingEnd="4dp"
             android:textColor="#FFFFFF"
             android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/markers"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="4dp"
+            android:background="#99000000"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:textColor="#FFEB3B"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/check"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="top|start"
+            android:layout_margin="4dp"
+            android:background="@drawable/chip_bg_selected"
+            android:gravity="center"
+            android:text="✔"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:visibility="gone" />
 
         <TextView
             android:layout_width="wrap_content"
