@@ -20,6 +20,12 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.7
+
+- **Nové diaľkové ovládanie** – responzívna stránka pre mobil aj PC: veľké tlačidlo nahrávania, družstvo, verdikt, vynulovanie pokusov, stav overlayov.
+- **Stopky na webe** vo formáte 12.98 – s medzičasmi, voliteľne zobrazené priamo v obraze kamery.
+- **UDP príkazy z webu** – rýchle tlačidlá aj vlastný príkaz/text, uložiteľné vlastné tlačidlá, voliteľne broadcast všetkým kamerám.
+
 ## Novinky vo verzii 2.6
 
 - **Čas aj na vedľajšej kamere:** hlavná kamera preposiela časy a príkazy z časomiery vedľajším (Kamery a OBS → Posielať čas vedľajším kamerám).

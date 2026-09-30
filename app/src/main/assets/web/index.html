@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<title>Firesport Cam – ovládanie</title>
+<style>
+:root{
+  --bg:#0f1115;--card:#171a21;--card2:#1e222b;--line:#2a2f3a;--text:#e8eaf0;--muted:#8b93a5;
+  --red:#e53935;--red2:#b71c1c;--blue:#1e88e5;--green:#43a047;--orange:#fb8c00;--yellow:#ffd54f;
+  --radius:14px;--gap:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));background:rgba(15,17,21,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:17px;white-space:nowrap}
+.brand small{font-weight:500;color:var(--muted);margin-left:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:var(--card2);border:1px solid var(--line);font-size:13px;white-space:nowrap}
+.pill .dot{width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.pill.rec{background:rgba(229,57,53,.18);border-color:var(--red)}
+.pill.rec .dot{background:var(--red);animation:blink 1s infinite}
+.pill.ok .dot{background:var(--green)}
+.pill.off .dot{background:var(--orange)}
+@keyframes blink{50%{opacity:.25}}
+.spacer{flex:1}
+.iconbtn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer}
+main{display:grid;gap:var(--gap);padding:var(--gap);max-width:1400px;margin:0 auto;
+  grid-template-columns:1fr;grid-template-areas:"video" "rec" "sw" "team" "udp" "info"}
+@media (min-width:980px){
+  main{grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);
+    grid-template-areas:"video rec" "video sw" "team sw" "udp udp" "info info"}
+  .video{position:sticky;top:70px;align-self:start}
+}
+@media (min-width:1400px){
+  main{grid-template-columns:minmax(0,1.6fr) minmax(320px,.8fr) minmax(320px,.8fr);
+    grid-template-areas:"video rec sw" "video team sw" "video udp udp" "info udp udp"}
+}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;min-width:0}
+.card h2{margin:0 0 10px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.card h2 .right{margin-left:auto;text-transform:none;letter-spacing:0}
+.video{grid-area:video;padding:0;overflow:hidden}
+.rec{grid-area:rec}.sw{grid-area:sw}.team{grid-area:team}.udp{grid-area:udp}.info{grid-area:info}
+.stage{position:relative;background:#000;aspect-ratio:16/9;width:100%}
+.stage video,.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
+.stage .badge{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.6);padding:3px 8px;border-radius:8px;font-size:12px}
+.vbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;font-size:13px;color:var(--muted)}
+.vbar a{color:#90caf9;text-decoration:none}
+.btn{border:0;border-radius:12px;padding:14px 16px;font-weight:600;cursor:pointer;background:var(--card2);border:1px solid var(--line);
+  transition:transform .06s,filter .15s;touch-action:manipulation;user-select:none}
+.btn:active{transform:scale(.97)}
+.btn:hover{filter:brightness(1.12)}
+.btn.red{background:var(--red);border-color:var(--red)}
+.btn.blue{background:var(--blue);border-color:var(--blue)}
+.btn.green{background:var(--green);border-color:var(--green)}
+.btn.orange{background:var(--orange);border-color:var(--orange)}
+.btn.big{font-size:20px;padding:18px}
+.btn.sm{padding:8px 12px;font-size:14px;border-radius:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1 1 0;min-width:110px}
+.recbtn{width:100%;display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px;padding:20px;border-radius:16px;background:var(--red);border:0}
+.recbtn .ring{width:22px;height:22px;border-radius:50%;background:#fff}
+.recbtn.on{background:#333a48}
+.recbtn.on .ring{border-radius:4px;background:var(--red)}
+.dur{font:600 15px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--muted);text-align:center;margin:8px 0 12px}
+.swdisp{font:700 clamp(64px,14vw,120px)/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-align:center;letter-spacing:-.02em;
+  padding:10px 0 14px;font-variant-numeric:tabular-nums;color:var(--yellow)}
+.swdisp.run{color:#fff}
+.laps{list-style:none;margin:10px 0 0;padding:0;max-height:180px;overflow:auto;font:14px ui-monospace,Menlo,Consolas,monospace}
+.laps li{display:flex;justify-content:space-between;padding:6px 4px;border-top:1px solid var(--line)}
+.laps li span:first-child{color:var(--muted)}
+.opts{display:grid;gap:8px;margin-top:12px}
+label.chk{display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer}
+label.chk input{width:20px;height:20px;accent-color:var(--blue)}
+input[type=text],input[type=password],select{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;outline:none}
+input:focus,select:focus{border-color:var(--blue)}
+.field{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.inline{display:flex;gap:8px;align-items:center}
+.inline>input,.inline>select{flex:1}
+.attempt{font-size:14px;color:var(--muted);margin:8px 0 12px}
+.attempt b{color:var(--text)}
+.verdicts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--card2);border-radius:999px;padding:8px 14px;cursor:pointer;font:600 13px ui-monospace,Menlo,Consolas,monospace}
+.chip:hover{border-color:var(--blue)}
+.chip.custom{border-style:dashed}
+.chip .x{margin-left:8px;color:var(--muted)}
+.log{margin-top:12px;max-height:190px;overflow:auto;font:13px ui-monospace,Menlo,Consolas,monospace;background:#0b0d11;border:1px solid var(--line);border-radius:10px;padding:8px}
+.log div{padding:2px 0;white-space:pre-wrap;word-break:break-word}
+.log .t{color:var(--muted)}
+.log .ok{color:#a5d6a7}.log .err{color:#ef9a9a}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;font-size:14px}
+.kv div:nth-child(odd){color:var(--muted)}
+.ov{font:600 14px ui-monospace,Menlo,Consolas,monospace}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+#toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;
+  background:#263040;border:1px solid var(--line);padding:10px 16px;border-radius:12px;transition:.25s;z-index:20;max-width:90vw;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%)}
+dialog{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:var(--radius);padding:18px;max-width:360px;width:90vw}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+kbd{background:var(--card2);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🔥 Firesport Cam<small id="camName"></small></div>
+  <span class="pill" id="statePill"><span class="dot"></span><span id="stateText">Pripájam…</span></span>
+  <span class="spacer"></span>
+  <span class="pill" id="udpPill" title="posledná UDP správa"><span class="dot"></span><span id="udpText">UDP</span></span>
+  <button class="iconbtn" id="pinBtn" title="PIN">🔑</button>
+</header>
+
+<main>
+  <section class="card video">
+    <div class="stage">
+      <video id="vid" muted autoplay playsinline></video>
+      <img id="img" alt="" style="display:none">
+      <span class="badge" id="vbadge">náhľad</span>
+    </div>
+    <div class="vbar"><span id="modeText">Obraz: …</span><span class="spacer"></span><a href="#" id="modeLink"></a><a href="#" id="fsLink">⛶ Celá obrazovka</a></div>
+  </section>
+
+  <section class="card rec">
+    <h2>Nahrávanie <span class="right" id="recHint"><kbd>R</kbd></span></h2>
+    <button class="btn recbtn" id="recBtn"><span class="ring"></span><span id="recLabel">Nahrávať</span></button>
+    <div class="dur" id="dur">00:00</div>
+    <div class="row">
+      <button class="btn blue" id="markBtn">📍 Značka <kbd>M</kbd></button>
+      <button class="btn" id="clearBtn">✕ Vymazať čas</button>
+    </div>
+  </section>
+
+  <section class="card sw">
+    <h2>Stopky <span class="right"><kbd>Medzera</kbd> štart/stop</span></h2>
+    <div class="swdisp" id="swDisp">0.00</div>
+    <div class="row">
+      <button class="btn big green" id="swStart">▶ Štart</button>
+      <button class="btn big" id="swLap">⏱ Medzičas</button>
+      <button class="btn big" id="swReset">↺ Reset</button>
+    </div>
+    <ul class="laps" id="laps"></ul>
+    <div class="opts">
+      <label class="chk"><input type="checkbox" id="swSend"> Zobrazovať stopky v obraze (ako čas z UDP)</label>
+      <label class="chk"><input type="checkbox" id="swRec"> Štart stopiek spustí nahrávanie</label>
+      <label class="chk"><input type="checkbox" id="swMark"> Medzičas pridá značku do videa</label>
+      <div class="field">Predpona textu v obraze (napr. <code>1:</code> pre overlay 1)
+        <input type="text" id="swPrefix" placeholder="bez predpony" autocomplete="off"></div>
+    </div>
+  </section>
+
+  <section class="card team">
+    <h2>Družstvo a verdikt</h2>
+    <div class="inline">
+      <select id="teamSel"></select>
+      <button class="btn sm" id="teamNew" title="Nové družstvo">＋</button>
+    </div>
+    <div class="attempt" id="attempt">Ďalší pokus: –</div>
+    <div class="field" style="margin-bottom:6px">Verdikt posledného pokusu <span id="lastFile"></span></div>
+    <div class="verdicts">
+      <button class="btn green" data-v="OK">OK</button>
+      <button class="btn orange" data-v="NP">NP</button>
+      <button class="btn red" data-v="D">D</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="resetTeam">↺ Pokusy družstva od 1</button>
+      <button class="btn sm" id="resetAll">↺ Všetky od 1</button>
+    </div>
+  </section>
+
+  <section class="card udp">
+    <h2>UDP príkazy <span class="right hint">spracujú sa ako správa z časomiery</span></h2>
+    <div class="chips" id="quick"></div>
+    <div class="inline" style="margin-top:12px">
+      <input type="text" id="cmdIn" placeholder="vlastný príkaz alebo text, napr. VERDIKT:D, TEAM:Dolany, 16.84" autocomplete="off" enterkeyhint="send">
+      <button class="btn blue sm" id="cmdSend">Odoslať</button>
+      <button class="btn sm" id="cmdSave" title="Uložiť ako tlačidlo">☆</button>
+    </div>
+    <div class="opts">
+      <label class="chk"><input type="checkbox" id="netAll"> Poslať aj ostatným kamerám v sieti (broadcast)</label>
+    </div>
+    <div class="chips" id="custom" style="margin-top:10px"></div>
+    <div class="log" id="log"></div>
+  </section>
+
+  <section class="card info">
+    <h2>Stav</h2>
+    <div class="kv">
+      <div>Kamera</div><div id="iInfo">–</div>
+      <div>Overlay 1</div><div class="ov" id="ov0">–</div>
+      <div>Overlay 2</div><div class="ov" id="ov1">–</div>
+      <div>Overlay 3</div><div class="ov" id="ov2">–</div>
+      <div>Posledná UDP</div><div class="ov" id="iUdp">–</div>
+    </div>
+    <div class="hint">Klávesy: <kbd>R</kbd> nahrávanie, <kbd>M</kbd> značka, <kbd>Medzera</kbd> stopky, <kbd>L</kbd> medzičas, <kbd>Esc</kbd> reset stopiek.</div>
+  </section>
+</main>
+
+<dialog id="pinDlg">
+  <form method="dialog">
+    <h3 style="margin-top:0">PIN</h3>
+    <p class="hint">Ak je v aplikácii nastavený PIN (Kamery a OBS), zadaj ho sem. Uloží sa v tomto prehliadači.</p>
+    <input type="password" id="pinIn" autocomplete="off">
+    <div class="row" style="margin-top:12px"><button class="btn blue" value="ok">Uložiť</button><button class="btn" value="cancel">Zrušiť</button></div>
+  </form>
+</dialog>
+<div id="toast"></div>
+
+<script src="/player.js"></script>
+<script>
+const MODE = '__MODE__';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem('fs_'+k); return v === null ? d : JSON.parse(v) }catch(e){ return d } },
+  set(k, v){ try{ localStorage.setItem('fs_'+k, JSON.stringify(v)) }catch(e){} }
+};
+let pin = store.get('pin', '');
+const q = () => 'pin=' + encodeURIComponent(pin);
+let S = {}; // posledný stav
+
+function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),2200) }
+function log(text, cls){
+  const d=document.createElement('div'); const now=new Date();
+  d.innerHTML='<span class="t">'+now.toLocaleTimeString('sk-SK')+'</span> ';
+  const s=document.createElement('span'); s.className=cls||''; s.textContent=text; d.appendChild(s);
+  const l=$('log'); l.prepend(d); while(l.children.length>60) l.lastChild.remove();
+}
+async function cmd(c, t, quiet){
+  try{
+    const r = await fetch('/cmd?c='+encodeURIComponent(c)+'&t='+encodeURIComponent(t||'')+'&'+q());
+    const msg = await r.text();
+    if(!quiet){ toast(msg) }
+    if(r.status===403){ toast('Nesprávny PIN'); }
+    setTimeout(poll, 150);
+    return msg;
+  }catch(e){ if(!quiet) toast('Bez spojenia s telefónom'); return null }
+}
+
+/* ---------- obraz ---------- */
+let mjpegOn = MODE !== 'h264';
+function showMjpeg(reason){
+  mjpegOn = true; $('vid').style.display='none'; const i=$('img'); i.style.display='block';
+  i.onerror=()=>setTimeout(()=>{ i.src='/stream.mjpg?'+q()+'&t='+Date.now() },1500);
+  i.src='/stream.mjpg?'+q()+'&t='+Date.now();
+  $('modeText').textContent = 'Obraz: obrázky (MJPEG)' + (reason ? ' – ' + reason : '');
+  $('vbadge').textContent='MJPEG';
+  $('modeLink').textContent='skúsiť video Full HD'; $('modeLink').href='/?mode=h264';
+}
+function startVideo(){
+  $('modeText').textContent='Obraz: video H.264'; $('vbadge').textContent='H.264';
+  $('modeLink').textContent='prepnúť na obrázky (MJPEG)'; $('modeLink').href='/?mode=mjpeg';
+  fsPlay($('vid'), q(), ()=>showMjpeg('video sa nedalo prehrať'));
+}
+if (mjpegOn) showMjpeg(); else startVideo();
+$('fsLink').onclick = e => { e.preventDefault(); const s=document.querySelector('.stage'); (s.requestFullscreen||s.webkitRequestFullscreen||function(){}).call(s) };
+
+/* ---------- nahrávanie ---------- */
+$('recBtn').onclick = () => cmd('toggle');
+$('markBtn').onclick = () => cmd('mark', '');
+$('clearBtn').onclick = () => cmd('clear');
+
+/* ---------- stopky ---------- */
+const sw = { run:false, t0:0, acc:0, laps:[], lastSent:'', inflight:false };
+['swSend','swRec','swMark'].forEach(id => { $(id).checked = store.get(id, id==='swSend'); $(id).onchange = () => store.set(id, $(id).checked) });
+$('swPrefix').value = store.get('swPrefix',''); $('swPrefix').oninput = () => store.set('swPrefix', $('swPrefix').value);
+const swMs = () => sw.acc + (sw.run ? performance.now() - sw.t0 : 0);
+const fmt = ms => (Math.floor(ms / 10) / 100).toFixed(2);   // 12.98 – stotiny sa neodrovnávajú nahor
+function swText(ms){ return ($('swPrefix').value || '') + fmt(ms) }
+function swSendNow(force){
+  if(!$('swSend').checked) return;
+  const t = swText(swMs());
+  if(!force && (sw.inflight || t === sw.lastSent)) return;
+  sw.inflight = true; sw.lastSent = t;
+  cmd('udp', t, true).finally(()=>{ sw.inflight=false });
+}
+function swRender(){
+  $('swDisp').textContent = fmt(swMs());
+  if(sw.run) requestAnimationFrame(swRender);
+}
+let swTimer = null;
+function swStart(){
+  if(sw.run) return swStop();
+  sw.run = true; sw.t0 = performance.now();
+  $('swDisp').classList.add('run');
+  $('swStart').textContent='■ Stop'; $('swStart').classList.remove('green'); $('swStart').classList.add('red');
+  requestAnimationFrame(swRender);
+  swTimer = setInterval(()=>swSendNow(false), 100);
+  if($('swRec').checked && !(S.recording)) cmd('rec', '', true);
+  log('Stopky štart', 'ok');
+}
+function swStop(){
+  if(!sw.run) return;
+  sw.acc += performance.now() - sw.t0; sw.run = false;
+  clearInterval(swTimer);
+  $('swDisp').classList.remove('run');
+  $('swStart').textContent='▶ Štart'; $('swStart').classList.add('green'); $('swStart').classList.remove('red');
+  swRender();
+  swSendNow(true);
+  log('Stopky stop: ' + fmt(sw.acc), 'ok');
+}
+function swLap(){
+  const ms = swMs(); if(ms<=0) return;
+  const prev = sw.laps.length ? sw.laps[sw.laps.length-1].ms : 0;
+  sw.laps.push({ms, d: ms - prev});
+  const li=document.createElement('li');
+  li.innerHTML='<span>'+sw.laps.length+'. medzičas</span><span>+'+fmt(ms-prev)+'</span><b>'+fmt(ms)+'</b>';
+  $('laps').prepend(li);
+  if($('swMark').checked) cmd('mark', 'Medzičas '+sw.laps.length+' '+fmt(ms), true);
+}
+function swReset(){
+  if(sw.run) swStop();
+  sw.acc = 0; sw.laps = []; $('laps').innerHTML=''; sw.lastSent='';
+  swRender();
+  if($('swSend').checked) cmd('clear', '', true);
+}
+$('swStart').onclick = swStart; $('swLap').onclick = swLap; $('swReset').onclick = swReset;
+
+/* ---------- družstvo a verdikt ---------- */
+$('teamSel').onchange = () => cmd('team', $('teamSel').value);
+$('teamNew').onclick = () => { const n = prompt('Názov nového družstva'); if(n && n.trim()) cmd('team', n.trim()) };
+document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => cmd('verdict', b.dataset.v));
+$('resetTeam').onclick = () => { if(!S.team){ toast('Najprv vyber družstvo'); return } if(confirm('Pokusy družstva „'+S.team+'“ rátať znova od 1?')) cmd('reset', S.team) };
+$('resetAll').onclick = () => { if(confirm('Pokusy všetkých družstiev rátať znova od 1?')) cmd('reset', '') };
+
+/* ---------- UDP príkazy ---------- */
+function sendUdp(text){
+  text = (text||'').trim(); if(!text) return;
+  const net = $('netAll').checked;
+  cmd(net ? 'udpnet' : 'udp', text, true).then(r => log('→ ' + text + (net ? '  (sieť)' : '') + (r ? '  · ' + r : ''), r ? 'ok' : 'err'));
+}
+$('netAll').checked = store.get('netAll', false); $('netAll').onchange = () => store.set('netAll', $('netAll').checked);
+$('cmdSend').onclick = () => { sendUdp($('cmdIn').value); $('cmdIn').select() };
+$('cmdIn').onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); $('cmdSend').click() } };
+let customs = store.get('customCmds', []);
+function renderCustom(){
+  const box=$('custom'); box.innerHTML='';
+  customs.forEach((c,i) => {
+    const b=document.createElement('button'); b.className='chip custom'; b.textContent=c; b.title='Odoslať';
+    const x=document.createElement('span'); x.className='x'; x.textContent='×'; x.title='Odstrániť';
+    x.onclick = e => { e.stopPropagation(); customs.splice(i,1); store.set('customCmds', customs); renderCustom() };
+    b.appendChild(x); b.onclick = () => sendUdp(c); box.appendChild(b);
+  });
+}
+$('cmdSave').onclick = () => { const t=$('cmdIn').value.trim(); if(!t) return; if(!customs.includes(t)){ customs.push(t); store.set('customCmds', customs); renderCustom(); toast('Uložené ako tlačidlo') } };
+renderCustom();
+let quickKey = '';
+function renderQuick(c){
+  const list = [c.start, c.stop, c.mark, c.clear, c.reset, c.verdict+':OK', c.verdict+':NP', c.verdict+':D', c.clear+':1', c.clear+':2'];
+  const key = list.join('|'); if(key === quickKey) return; quickKey = key;
+  const box=$('quick'); box.innerHTML='';
+  list.filter(Boolean).forEach(t => { const b=document.createElement('button'); b.className='chip'; b.textContent=t; b.onclick=()=>sendUdp(t); box.appendChild(b) });
+}
+renderQuick({start:'START',stop:'STOP',mark:'MARK',clear:'CLEAR',reset:'RESET',verdict:'VERDIKT'});
+
+/* ---------- stav ---------- */
+let teamsKey = '';
+async function poll(){
+  try{
+    const r = await fetch('/status?'+q()); const s = await r.json();
+    if(s.error){ $('stateText').textContent='Zadaj PIN'; $('statePill').className='pill off'; return }
+    S = s;
+    $('statePill').className = 'pill ' + (s.recording ? 'rec' : 'ok');
+    $('stateText').textContent = s.recording ? 'NAHRÁVA ' + s.duration : s.state;
+    $('recBtn').classList.toggle('on', !!s.recording);
+    $('recLabel').textContent = s.recording ? 'Zastaviť' : 'Nahrávať';
+    $('dur').textContent = s.recording ? s.duration : (s.state || '');
+    $('camName').textContent = s.camera ? '· ' + s.camera : '';
+    $('iInfo').textContent = s.info || '–';
+    (s.overlays||[]).forEach((t,i) => { const e=$('ov'+i); if(e) e.textContent = t || '–' });
+    $('iUdp').textContent = s.lastUdp || '–';
+    $('udpText').textContent = s.lastUdp ? 'UDP: ' + s.lastUdp.slice(0,18) : 'UDP';
+    $('udpPill').className = 'pill ' + (s.udpAgeMs >= 0 && s.udpAgeMs < 10000 ? 'ok' : 'off');
+    if(s.cmds) renderQuick(s.cmds);
+    const tk = (s.teams||[]).join('|') + '#' + (s.team||'');
+    if(tk !== teamsKey && document.activeElement !== $('teamSel')){
+      teamsKey = tk; const sel=$('teamSel'); sel.innerHTML='';
+      const o0=document.createElement('option'); o0.value=''; o0.textContent='— bez družstva —'; sel.appendChild(o0);
+      const all = (s.teams||[]).slice(); if(s.team && !all.includes(s.team)) all.push(s.team);
+      all.forEach(t => { const o=document.createElement('option'); o.value=t; o.textContent=t; sel.appendChild(o) });
+      sel.value = s.team || '';
+    }
+    $('attempt').innerHTML = s.team ? 'Ďalší pokus: <b>' + (s.attempt||1) + '.</b> · ' + s.team : 'Družstvo nie je vybrané';
+    $('lastFile').textContent = s.lastAttempt ? '(' + s.lastAttempt + (s.lastVerdict ? ' – ' + s.lastVerdict : '') + ')' : '';
+  }catch(e){
+    $('statePill').className='pill off'; $('stateText').textContent='Bez spojenia';
+  }
+}
+setInterval(poll, 1000); poll();
+
+/* ---------- PIN ---------- */
+$('pinBtn').onclick = () => { $('pinIn').value = pin; $('pinDlg').showModal() };
+$('pinDlg').addEventListener('close', () => { if($('pinDlg').returnValue==='ok'){ pin=$('pinIn').value; store.set('pin', pin); location.reload() } });
+
+/* ---------- klávesy ---------- */
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName||'').toLowerCase();
+  if(tag==='input' || tag==='select' || tag==='textarea' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if(e.code==='Space'){ e.preventDefault(); swStart() }
+  else if(e.key==='l' || e.key==='L') swLap();
+  else if(e.key==='Escape') swReset();
+  else if(e.key==='r' || e.key==='R') cmd('toggle');
+  else if(e.key==='m' || e.key==='M') cmd('mark','');
+});
+</script>
+</body>
+</html>

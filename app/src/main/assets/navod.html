@@ -210,12 +210,23 @@ Tlačidlami <i>A ◀ ▶</i> a <i>B ◀ ▶</i> doladíš každé video zvláš�
 
 <h2 id="dialkove">11. Diaľkové ovládanie</h2>
 <ol>
-  <li>Zapni <b>⚙ → 🌐 Diaľkové → Diaľkové ovládanie</b> (voliteľne nastav PIN).</li>
-  <li>Na druhom mobile alebo PC v rovnakej sieti otvor v prehliadači adresu zobrazenú v nastaveniach, napr. <code>http://192.168.1.50:8080</code>.</li>
-  <li>Uvidíš živý náhľad a tlačidlá <b>Nahrávať</b>, <b>Stop</b>, <b>Značka</b>.</li>
+  <li>Zapni <b>⚙ → 🎥 Kamery a OBS → Diaľkové ovládanie</b> (voliteľne nastav PIN).</li>
+  <li>Na druhom mobile, tablete alebo PC v rovnakej sieti otvor adresu z nastavení, napr. <code>http://192.168.1.50:8080</code>.</li>
 </ol>
-<p>Plynulosť (5–25 snímok/s) a veľkosť náhľadu nastavíš v tej istej karte. Ak obraz seká,
-zníž veľkosť na <i>Malá</i> alebo plynulosť na 10 snímok/s – pomáha to hlavne pri slabšej Wi-Fi.</p>
+<p>Stránka sa prispôsobí mobilu aj veľkej obrazovke a má tieto časti:</p>
+<ul>
+  <li><b>Živý obraz</b> – video Full HD alebo obrázky MJPEG, tlačidlo na celú obrazovku.</li>
+  <li><b>Nahrávanie</b> – jedno veľké tlačidlo Nahrávať / Zastaviť s dĺžkou záznamu, Značka, Vymazať čas.</li>
+  <li><b>Stopky</b> – čas vo formáte <b>12.98</b> (sekundy a stotiny), Štart/Stop, Medzičas, Reset. Voliteľne sa stopky
+  zobrazujú priamo v obraze kamery (ako čas z časomiery), štart stopiek spustí nahrávanie a medzičas pridá značku.
+  Predponou (napr. <code>1:</code>) pošleš čas do konkrétneho overlayu.</li>
+  <li><b>Družstvo a verdikt</b> – výber družstva, číslo ďalšieho pokusu, verdikt posledného pokusu OK / NP / D a vynulovanie pokusov.</li>
+  <li><b>UDP príkazy</b> – rýchle tlačidlá (START, STOP, MARK, CLEAR, RESET, VERDIKT:…) a vlastný príkaz alebo text.
+  Telefón ho spracuje presne ako správu z časomiery. Vlastné príkazy si uložíš hviezdičkou ☆ ako tlačidlá.
+  Voľba <i>Poslať aj ostatným kamerám</i> ho pošle broadcastom všetkým telefónom v sieti.</li>
+  <li><b>Stav</b> – texty všetkých overlayov a posledná UDP správa.</li>
+</ul>
+<p>Klávesy na PC: <b>Medzera</b> stopky štart/stop, <b>L</b> medzičas, <b>Esc</b> reset stopiek, <b>R</b> nahrávanie, <b>M</b> značka.</p>
 
 <h2 id="profily">12. Profily nastavení</h2>
 <p>V <b>⚙ → Ostatné → Profily</b> uložíš všetky aktuálne nastavenia pod názvom (napr. „Súťaž večer“, „Tréning“)

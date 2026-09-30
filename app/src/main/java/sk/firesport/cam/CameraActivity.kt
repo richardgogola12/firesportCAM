@@ -406,6 +406,10 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
      * aj priamo, aj cez hlavnú kameru, druhá sa ignoruje.
      */
     private fun handleUdp(msg: String, from: String, port: Int) {
+        if (from.isNotEmpty() && msg == webEcho && android.os.SystemClock.elapsedRealtime() - webEchoAt < 1500) {
+            webEcho = ""
+            return
+        }
         val role = prefs.getString("camera_role", "single")
         val relayed = msg.startsWith(CamLink.RELAY)
         if (relayed && role != "slave") return
@@ -468,6 +472,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             AttemptEditor.setVerdict(file, v)
             pendingVerdict = null
         }
+        refreshLastSaved()
         if (prefs.getBoolean("verdict_prompt", true) && pendingVerdictSet.not()) showVerdictBar(file)
         pendingVerdictSet = false
         updateTeamLabel()
@@ -502,6 +507,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         }
         val f = lastSaved ?: VideoStore.list(this).firstOrNull() ?: return
         AttemptEditor.setVerdict(f, code)
+        lastSaved = f
+        refreshLastSaved()
         hideVerdictBar.run()
         if (activityStarted) toast("${Verdicts.emoji(code.ifEmpty { Verdicts.OK })} ${if (code.isEmpty()) "Verdikt: automaticky" else Verdicts.full(prefs, code)}")
     }
@@ -592,11 +599,41 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             RecordingManager.State.BUFFERING -> "pripravená (predstih)"
             RecordingManager.State.IDLE -> "pripravená"
         }
-        val info = device.summary() + " • " + udpStatus +
-            (if (OverlayState.lastPacket.isNotEmpty()) " • UDP: " + OverlayState.lastPacket.take(30) else "")
-        return "{\"state\":\"${jsonEscape(state)}\",\"recording\":${rec.isUserRecording}," +
-            "\"duration\":\"${formatDuration(rec.userElapsedMs() * 1_000_000L)}\"," +
-            "\"info\":\"${jsonEscape(info)}\"}"
+        val info = device.summary() + " • " + udpStatus
+        val o = org.json.JSONObject()
+        o.put("state", state)
+        o.put("recording", rec.isUserRecording)
+        o.put("duration", formatDuration(rec.userElapsedMs() * 1_000_000L))
+        o.put("info", info)
+        o.put("camera", OverlayState.cameraName)
+        o.put("team", Prefs.str(prefs, "team_name", ""))
+        o.put("attempt", if (rec.isUserRecording) OverlayState.attemptNo else nextAttemptCache)
+        o.put("teams", org.json.JSONArray(Teams.list(prefs)))
+        o.put("overlays", org.json.JSONArray((0 until TEXT_OVERLAYS).map { OverlayState.displayText(it) ?: "" }))
+        o.put("lastUdp", OverlayState.lastPacket.take(60))
+        o.put("udpAgeMs", if (OverlayState.lastPacketAt > 0) android.os.SystemClock.elapsedRealtime() - OverlayState.lastPacketAt else -1)
+        o.put("lastAttempt", lastSavedLabel)
+        o.put("lastVerdict", lastSavedVerdict)
+        o.put("cmds", org.json.JSONObject().apply {
+            put("start", OverlayState.cmdStart); put("stop", OverlayState.cmdStop); put("mark", OverlayState.cmdMark)
+            put("clear", OverlayState.cmdClear); put("team", OverlayState.cmdTeam); put("reset", OverlayState.cmdReset)
+            put("verdict", OverlayState.cmdVerdict)
+        })
+        return o.toString()
+    }
+
+    @Volatile private var nextAttemptCache = 0
+    @Volatile private var lastSavedLabel = ""
+    @Volatile private var lastSavedVerdict = ""
+    /** Text poslaný z webu do siete – keď sa vráti ako broadcast, druhýkrát sa nespracuje. */
+    @Volatile private var webEcho = ""
+    @Volatile private var webEchoAt = 0L
+
+    private fun refreshLastSaved() {
+        val f = lastSaved ?: return
+        val info = Sidecars.loadInfo(f)
+        lastSavedLabel = info?.let { i -> listOf(i.team, if (i.attemptNo > 0) "${i.attemptNo}. pokus" else "", i.result?.let { Times.format(it) } ?: "").filter { it.isNotEmpty() }.joinToString(" · ") }?.ifEmpty { null } ?: f.name
+        lastSavedVerdict = info?.let { Verdicts.short(prefs, Verdicts.of(prefs, it)) } ?: ""
     }
 
     // znovu používané bitmapy pre stream (volá sa vždy z jedného vlákna naraz)
@@ -677,6 +714,12 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     @Volatile private var live: LiveEncoder? = null
     private val liveSrc = arrayOfNulls<Bitmap>(2)
 
+    override fun asset(path: String): ByteArray? = try {
+        assets.open("web/" + path.substringAfterLast('/')).use { it.readBytes() }
+    } catch (_: Exception) {
+        null
+    }
+
     override fun streamMode(): String = prefs.getString("remote_stream", "h264") ?: "h264"
 
     override fun liveEncoder(): LiveEncoder? {
@@ -740,6 +783,32 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
                 "toggle" -> { userToggle(); "OK" }
                 "mark" -> { rec.addMarker(arg); if (rec.isUserRecording) "Značka pridaná" else "Značka sa dá pridať len počas nahrávania" }
                 "clear" -> { OverlayState.clear(null); "Text z UDP vymazaný" }
+                "udp", "udpnet" -> {
+                    val text = arg.trim()
+                    if (text.isEmpty()) "Prázdny príkaz"
+                    else {
+                        if (cmd == "udpnet") {
+                            webEcho = text
+                            webEchoAt = android.os.SystemClock.elapsedRealtime()
+                            CamLink.send(udpPort(), text)
+                        }
+                        handleUdp(text, "", udpPort())
+                        if (cmd == "udpnet") "Spracované a poslané do siete" else "Spracované"
+                    }
+                }
+                "team" -> {
+                    if (rec.isBusy) "Družstvo sa mení pred nahrávaním"
+                    else { setTeam(arg); "Družstvo: ${arg.ifEmpty { "—" }}" }
+                }
+                "verdict" -> {
+                    val code = Verdicts.parse(prefs, arg)
+                    if (code == null) "Neznámy verdikt" else {
+                        applyVerdict(arg)
+                        refreshLastSaved()
+                        if (rec.isBusy) "Verdikt sa zapíše k nahrávanému pokusu" else "Verdikt: ${if (code.isEmpty()) "automaticky" else Verdicts.full(prefs, code)}"
+                    }
+                }
+                "reset" -> { resetAttempts(arg.ifEmpty { null }); if (arg.isEmpty()) "Pokusy všetkých družstiev od 1" else "Pokusy „$arg“ od 1" }
                 else -> "Neznámy príkaz"
             }
             latch.countDown()
@@ -1336,6 +1405,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         val team = Prefs.str(prefs, "team_name", "")
         if (team.isEmpty()) {
             btnTeam.text = "Družstvo: —"
+            nextAttemptCache = 0
             return
         }
         val appCtx = applicationContext
@@ -1343,6 +1413,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         btnTeam.text = "Družstvo: $team"
         Thread {
             val no = Teams.nextAttemptNo(appCtx, event, team)
+            nextAttemptCache = no
             mainHandler.post {
                 if (Prefs.str(prefs, "team_name", "") == team) btnTeam.text = "Družstvo: $team • $no. pokus"
             }

@@ -39,6 +39,9 @@ class RemoteServer(
         fun liveEncoder(): LiveEncoder?
 
         fun liveFps(): Int
+
+        /** Súbor webovej stránky z assets/web (index.html, player.js). */
+        fun asset(path: String): ByteArray?
     }
 
     @Volatile private var running = false
@@ -112,7 +115,12 @@ class RemoteServer(
             val authorized = pin.isEmpty() || query["pin"] == pin
             when (path) {
                 "/", "/index.html" -> send(out, 200, "text/html; charset=utf-8", page(query["mode"] ?: handler.streamMode()).toByteArray(Charsets.UTF_8))
-                "/obs" -> send(out, 200, "text/html; charset=utf-8", obsPage(query["pin"] ?: "", query["mode"] ?: handler.streamMode()).toByteArray(Charsets.UTF_8))
+            "/player.js" -> {
+                val js = handler.asset("player.js")
+                if (js != null) send(out, 200, "application/javascript; charset=utf-8", js)
+                else send(out, 404, "text/plain", "not found".toByteArray())
+            }
+                "/obs" -> send(out, 200, "text/html; charset=utf-8", obsPage(query["pin"] ?: "", if ((query["mode"] ?: handler.streamMode()) == "mjpeg") "mjpeg" else "h264").toByteArray(Charsets.UTF_8))
                 "/status" -> if (authorized) send(out, 200, "application/json; charset=utf-8", handler.statusJson().toByteArray(Charsets.UTF_8))
                 else send(out, 403, "application/json", "{\"error\":\"pin\"}".toByteArray())
                 "/stream.mjpg" -> if (authorized) stream(s, out)
@@ -253,45 +261,7 @@ class RemoteServer(
     }
 
 
-    /** Prehrávač H.264 (MSE) s automatickým návratom na MJPEG. */
-    private val playerJs = """
-function fsPlay(video,q,onFallback){
- if(!window.MediaSource||!MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01F"')){onFallback();return}
- let played=false,done=false,lastT=-1,stall=0;const ctrl=new AbortController();
- const ms=new MediaSource();video.src=URL.createObjectURL(ms);
- function end(){if(done)return;done=true;clearInterval(wd);try{ctrl.abort()}catch(e){}
-  if(played)setTimeout(function(){fsPlay(video,q,onFallback)},800);else onFallback();}
- ms.addEventListener('sourceopen',async function(){
-  try{
-   const r=await fetch('/live.mp4?'+q+'&t='+Date.now(),{signal:ctrl.signal});
-   if(!r.ok){end();return}
-   const codec=r.headers.get('X-Codec')||'avc1.42E01F';
-   const sb=ms.addSourceBuffer('video/mp4; codecs="'+codec+'"');
-   const queue=[];
-   function pump(){
-    if(sb.updating||!queue.length)return;
-    try{if(video.buffered.length&&video.currentTime-video.buffered.start(0)>20){sb.remove(video.buffered.start(0),video.currentTime-5);return}}catch(e){}
-    let n=0;for(const c of queue)n+=c.length;const b=new Uint8Array(n);let o=0;
-    while(queue.length){const c=queue.shift();b.set(c,o);o+=c.length}
-    try{sb.appendBuffer(b)}catch(e){end()}
-   }
-   sb.addEventListener('updateend',function(){
-    if(video.buffered.length){const e=video.buffered.end(video.buffered.length-1);
-     if(e-video.currentTime>0.5)video.currentTime=Math.max(e-0.1,0);}
-    if(video.paused)video.play().catch(function(){});
-    pump();
-   });
-   const rd=r.body.getReader();
-   for(;;){const x=await rd.read();if(x.done)break;queue.push(x.value);pump();}
-   end();
-  }catch(e){end()}
- });
- const wd=setInterval(function(){
-  if(video.currentTime>0.2)played=true;
-  if(video.currentTime===lastT){if(++stall>=6)end()}else{stall=0;lastT=video.currentTime}
- },1000);
-}
-"""
+
 
     /** Čistý obraz na celú plochu – pre OBS (Zdroj prehliadača / Browser Source). */
     private fun obsPage(pinValue: String, mode: String): String {
@@ -302,8 +272,8 @@ function fsPlay(video,q,onFallback){
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}
 img,video{width:100%;height:100%;object-fit:contain;display:block}</style></head>
 <body><video id="vid" muted autoplay playsinline></video><img id="v" alt="" style="display:none">
+<script src="/player.js"></script>
 <script>
-$playerJs
  const v=document.getElementById('v'),vid=document.getElementById('vid');
  function mjpeg(){vid.style.display='none';v.style.display='block';start();}
  function start(){v.src='/stream.mjpg?${q}t='+Date.now();}
@@ -313,71 +283,11 @@ $playerJs
 """.trimIndent()
     }
 
-    private fun page(mode: String): String = """
-<!doctype html>
-<html lang="sk"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Firesport Cam – ovládanie</title>
-<style>
- body{margin:0;font-family:system-ui,sans-serif;background:#111;color:#eee}
- header{padding:10px 14px;background:#222;font-weight:600}
- main{max-width:900px;margin:auto;padding:12px}
- img{width:100%;background:#000;border-radius:8px;min-height:120px}
- .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
- button{flex:1;min-width:120px;font-size:20px;padding:16px;border:0;border-radius:10px;color:#fff;background:#444}
- #rec{background:#c62828} #stop{background:#555} #mark{background:#1565c0}
- #state{font-size:18px;margin:8px 0} .small{opacity:.7;font-size:14px}
- input{font-size:16px;padding:8px;border-radius:6px;border:0;width:120px}
-</style></head><body>
-<header>🔥 Firesport Cam – diaľkové ovládanie</header>
-<main>
- <div id="state">Pripájam…</div>
- <video id="vid" muted autoplay playsinline style="width:100%;background:#000;border-radius:8px;display:block"></video>
- <img id="img" alt="náhľad" style="display:none">
- <div class="small" id="mode"></div>
- <div class="row">
-  <button id="rec" onclick="cmd('rec')">⏺ Nahrávať</button>
-  <button id="stop" onclick="cmd('stop')">⏹ Stop</button>
-  <button id="mark" onclick="cmd('mark')">📍 Značka</button>
-  <button id="clr" onclick="cmd('clear')">✕ Vymazať čas</button>
- </div>
- <div class="small">PIN (ak je nastavený): <input id="pin" type="password" onchange="savePin()"></div>
- <div class="small" id="info"></div>
-</main>
-<script>
- const pinEl=document.getElementById('pin');
- try{pinEl.value=localStorage.getItem('fs_pin')||''}catch(e){}
- function savePin(){try{localStorage.setItem('fs_pin',pinEl.value)}catch(e){};location.reload()}
- function q(){return 'pin='+encodeURIComponent(pinEl.value)}
- function cmd(c){fetch('/cmd?c='+c+'&'+q()).then(r=>r.text()).then(t=>{document.getElementById('info').textContent=t})}
- function poll(){
-  fetch('/status?'+q()).then(r=>r.json()).then(s=>{
-   if(s.error){document.getElementById('state').textContent='Zadaj PIN';return}
-   document.getElementById('state').innerHTML=(s.recording?'🔴 NAHRÁVA '+s.duration:'⚪ '+s.state)+'<br><span class="small">'+s.info+'</span>';
-  }).catch(()=>{document.getElementById('state').textContent='Bez spojenia'});
- }
- $playerJs
- let mjpegOn=false;
- function img(){
-  if(!mjpegOn&&MODE==='h264'){startVideo();return}
-  const i=document.getElementById('img');
-  i.onerror=()=>setTimeout(img,1500);
-  i.src='/stream.mjpg?'+q()+'&t='+Date.now();
- }
- function startVideo(){
-  document.getElementById('mode').innerHTML='Obraz: video H.264 · <a href="/?mode=mjpeg" style="color:#9cf">prepnúť na obrázky (MJPEG)</a>';
-  fsPlay(document.getElementById('vid'),q(),function(){
-   mjpegOn=true;document.getElementById('vid').style.display='none';
-   document.getElementById('img').style.display='block';
-   document.getElementById('mode').textContent='Obraz: obrázky (MJPEG) – prehliadač nepodporuje video alebo sa nenačítalo';
-   img();
-  });
- }
- const MODE='$mode';
- if(MODE!=='h264'){mjpegOn=true;document.getElementById('vid').style.display='none';document.getElementById('img').style.display='block';
-  document.getElementById('mode').innerHTML='Obraz: obrázky (MJPEG) · <a href="/?mode=h264" style="color:#9cf">skúsiť video Full HD</a>';}
- setInterval(poll,1000);poll();img();
-</script>
-</body></html>
-""".trimIndent()
+    /** Ovládacia stránka (assets/web/index.html). */
+    private fun page(mode: String): String {
+        val m = if (mode == "mjpeg") "mjpeg" else "h264"
+        val html = handler.asset("index.html")?.toString(Charsets.UTF_8)
+            ?: return "<!doctype html><meta charset=utf-8><p>Stránka ovládania chýba.</p>"
+        return html.replace("__MODE__", m)
+    }
 }
