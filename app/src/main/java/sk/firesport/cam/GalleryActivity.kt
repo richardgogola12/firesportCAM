@@ -52,6 +52,8 @@ class GalleryActivity : AppCompatActivity() {
         private const val M_HELP = 8
         private const val M_RESULTS = 9
         private const val M_IMPORT = 10
+        private const val M_VERDICT = 11
+        private const val M_CLEANUP = 12
 
         /** null = všetky, "" = bez súťaže */
         private const val ALL = "\u0000all"
@@ -63,6 +65,8 @@ class GalleryActivity : AppCompatActivity() {
     private val selected = LinkedHashSet<String>()
     private var filter = ALL
     private var files: List<File> = emptyList()
+    private lateinit var filterBar: FilterBar
+    private val prefs by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
     private val importLauncher =
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()) { uris ->
             if (uris.isNotEmpty()) importFiles(uris)
@@ -71,7 +75,11 @@ class GalleryActivity : AppCompatActivity() {
     private val adapter = VideoAdapter(
         onClick = { onItemClick(it) },
         onLongClick = { toggleSelect(it) },
-        isSelected = { selected.contains(it.absolutePath) }
+        isSelected = { selected.contains(it.absolutePath) },
+        verdictOf = { f ->
+            Sidecars.loadInfo(f)?.let { i -> Verdicts.of(prefs, i) to i }
+        },
+        shortOf = { Verdicts.short(prefs, it) }
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,6 +89,11 @@ class GalleryActivity : AppCompatActivity() {
         recycler = findViewById(R.id.recycler)
         emptyText = findViewById(R.id.emptyText)
         eventBar = findViewById(R.id.eventBar)
+        filterBar = FilterBar(
+            this, findViewById(R.id.filterBar),
+            listOf("new" to "Najnovšie", "old" to "Najstaršie", "result" to "Najlepší čas", "team" to "Družstvo"),
+            allowNa = false
+        ) { clearSelection(); reload() }
         val widthDp = resources.displayMetrics.widthPixels / resources.displayMetrics.density
         val span = (widthDp / 180f).toInt().coerceIn(2, 6)
         recycler.layoutManager = GridLayoutManager(this, span)
@@ -114,13 +127,29 @@ class GalleryActivity : AppCompatActivity() {
 
     private fun reload() {
         val all = VideoStore.list(this)
-        files = when (filter) {
+        val inEvent = when (filter) {
             ALL -> all
             else -> all.filter { VideoStore.eventOf(this, it) == filter }
         }
+        val rows = inEvent.map { f ->
+            val i = Sidecars.loadInfo(f) ?: AttemptInfo(startEpochMs = f.lastModified())
+            AttemptRow(f, i, Verdicts.of(prefs, i))
+        }
+        filterBar.build(rows, Teams.list(prefs))
+        val fl = filterBar.filter
+        val shown = rows.filter { fl.matches(it) }
+        files = when (fl.sort) {
+            "old" -> shown.sortedBy { it.file!!.lastModified() }
+            "result" -> shown.sortedWith(compareBy<AttemptRow> { if (it.verdict == Verdicts.OK && it.info.result != null) 0 else 1 }
+                .thenBy { it.info.result ?: Double.MAX_VALUE })
+            "team" -> shown.sortedWith(compareBy<AttemptRow> { it.info.team.lowercase(Locale.getDefault()).ifEmpty { "\uffff" } }
+                .thenBy { it.info.attemptNo }.thenBy { it.info.startEpochMs })
+            else -> shown
+        }.map { it.file!! }
         selected.retainAll(files.map { it.absolutePath }.toSet())
         adapter.submit(files)
         emptyText.visibility = if (files.isEmpty()) View.VISIBLE else View.GONE
+        emptyText.text = if (inEvent.isNotEmpty() && files.isEmpty()) "Filtru nevyhovuje žiadne video." else "Zatiaľ žiadne videá.\nNahraj prvé video v kamere."
         buildEventBar(all)
         updateTitle()
     }
@@ -194,6 +223,7 @@ class GalleryActivity : AppCompatActivity() {
             menu.add(0, M_SHARE, 1, "Zdieľať").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             if (selected.size == 2) menu.add(0, M_COMPARE, 2, "Porovnať").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             menu.add(0, M_DELETE, 3, "Vymazať").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            menu.add(0, M_VERDICT, 4, "Verdikt…")
             menu.add(0, M_MOVE, 4, "Presunúť do súťaže…")
             if (selected.size == 1) menu.add(0, M_MORE, 5, "Ďalšie možnosti…")
             menu.add(0, M_SELECT_ALL, 6, "Vybrať všetko")
@@ -202,7 +232,8 @@ class GalleryActivity : AppCompatActivity() {
             menu.add(0, M_RESULTS, 1, "Výsledky").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM)
             menu.add(0, M_SELECT_ALL, 2, "Vybrať viac")
             menu.add(0, M_IMPORT, 3, "Importovať videá z iného telefónu…")
-            menu.add(0, M_HELP, 4, "Návod")
+            menu.add(0, M_CLEANUP, 4, "🧹 Upratovanie…")
+            menu.add(0, M_HELP, 5, "Návod")
         }
         return true
     }
@@ -221,6 +252,8 @@ class GalleryActivity : AppCompatActivity() {
                 updateTitle()
             }
             M_HELP -> startActivity(Intent(this, HelpActivity::class.java))
+            M_VERDICT -> AttemptEditor.pickVerdict(this, selectedFiles()) { clearSelection(); reload() }
+            M_CLEANUP -> Cleanup.showDialog(this) { reload() }
             M_RESULTS -> startActivity(Intent(this, ResultsActivity::class.java))
             M_IMPORT -> importLauncher.launch(arrayOf("video/*", "text/plain", "application/json", "application/octet-stream"))
             else -> return super.onOptionsItemSelected(item)
@@ -244,13 +277,15 @@ class GalleryActivity : AppCompatActivity() {
 
     private fun showOptions(f: File) {
         val others = files.filter { it != f }
-        val items = arrayListOf("Prehrať", "Zdieľať", "Uložiť do galérie telefónu", "Premenovať", "Značky…", "Presunúť do súťaže…", "Vymazať")
+        val items = arrayListOf("Prehrať", "Verdikt…", "Upraviť údaje pokusu…", "Zdieľať", "Uložiť do galérie telefónu", "Premenovať", "Značky…", "Presunúť do súťaže…", "Vymazať")
         if (others.isNotEmpty()) items.add(1, "Porovnať s iným videom…")
         AlertDialog.Builder(this)
             .setTitle(f.name)
             .setItems(items.toTypedArray()) { _, which ->
                 when (items[which]) {
                     "Prehrať" -> openPlayer(f)
+                    "Verdikt…" -> AttemptEditor.pickVerdict(this, listOf(f)) { reload() }
+                    "Upraviť údaje pokusu…" -> AttemptEditor.show(this, f) { reload() }
                     "Porovnať s iným videom…" -> pickOther(f, others)
                     "Zdieľať" -> share(listOf(f))
                     "Uložiť do galérie telefónu" -> copyToGallery(f)
@@ -480,7 +515,9 @@ class GalleryActivity : AppCompatActivity() {
 class VideoAdapter(
     private val onClick: (File) -> Unit,
     private val onLongClick: (File) -> Unit,
-    private val isSelected: (File) -> Boolean
+    private val isSelected: (File) -> Boolean,
+    private val verdictOf: (File) -> Pair<String, AttemptInfo>? = { null },
+    private val shortOf: (String) -> String = { it }
 ) : RecyclerView.Adapter<VideoAdapter.VH>() {
 
     private var items: List<File> = emptyList()
@@ -493,6 +530,7 @@ class VideoAdapter(
         val check: TextView = v.findViewById(R.id.check)
         val name: TextView = v.findViewById(R.id.name)
         val info: TextView = v.findViewById(R.id.info)
+        val verdict: TextView = v.findViewById(R.id.verdict)
     }
 
     @SuppressLint("NotifyDataSetChanged")
@@ -512,8 +550,18 @@ class VideoAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) {
         val f = items[position]
         val ctx = holder.itemView.context
-        holder.name.text = f.name
+        val vi = verdictOf(f)
+        val ai = vi?.second
+        if (ai != null && ai.team.isNotEmpty()) {
+            holder.name.text = ai.team + (if (ai.attemptNo > 0) " • ${ai.attemptNo}. pokus" else "") +
+                (ai.result?.let { " • ${Times.format(it)}" } ?: "")
+        } else holder.name.text = f.name
         holder.info.text = "${dateFmt.format(Date(f.lastModified()))} • ${Formatter.formatShortFileSize(ctx, f.length())}"
+        if (vi != null) {
+            holder.verdict.visibility = View.VISIBLE
+            holder.verdict.text = "${Verdicts.emoji(vi.first)} ${shortOf(vi.first)}"
+            holder.verdict.setTextColor(Verdicts.color(vi.first))
+        } else holder.verdict.visibility = View.GONE
         val mc = Markers.load(f).size
         holder.markers.text = if (mc > 0) "📍$mc" else ""
         holder.markers.visibility = if (mc > 0) View.VISIBLE else View.GONE

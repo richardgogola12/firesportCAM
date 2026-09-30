@@ -41,14 +41,19 @@ class ResultsActivity : AppCompatActivity() {
     }
 
     private lateinit var eventBar: LinearLayout
+    private lateinit var filterBar: FilterBar
+    private lateinit var summary: TextView
     private lateinit var table: TableLayout
     private lateinit var emptyText: TextView
     private var filter = ALL
     private var bestOnly = false
     private var rows: List<Row> = emptyList()
-    private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+    private val timeFmt = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
+    private val prefs by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
 
-    private data class Row(val file: File, val info: AttemptInfo)
+    private data class Row(val file: File?, val info: AttemptInfo, val verdict: String) {
+        val ranked get() = verdict == Verdicts.OK && info.result != null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +68,23 @@ class ResultsActivity : AppCompatActivity() {
         }
         barScroll.addView(eventBar)
         root.addView(barScroll)
+        val fScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val fRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding((8 * dp).toInt(), (2 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+        }
+        fScroll.addView(fRow)
+        root.addView(fScroll)
+        filterBar = FilterBar(
+            this, fRow,
+            listOf("result" to "Poradie (výsledok)", "time" to "Čas nahrávania", "team" to "Družstvo", "attempt" to "Číslo pokusu"),
+            allowNa = true
+        ) { reload() }
+        summary = TextView(this).apply {
+            textSize = 13f
+            setPadding((12 * dp).toInt(), (2 * dp).toInt(), (12 * dp).toInt(), (2 * dp).toInt())
+        }
+        root.addView(summary)
 
         emptyText = TextView(this).apply {
             text = "Zatiaľ žiadne pokusy.\nVyber družstvo v kamere a nahraj pokus – čas sa doplní z časomiery."
@@ -126,27 +148,48 @@ class ResultsActivity : AppCompatActivity() {
     private fun reload() {
         val all = VideoStore.attempts(this, null)
         buildEventBar(all.map { VideoStore.eventOf(this, it.first) })
-        var list = all
+        val inEvent = all
             .filter { filter == ALL || VideoStore.eventOf(this, it.first) == filter }
-            .map { Row(it.first, it.second) }
+            .map { Row(it.first, it.second, Verdicts.of(prefs, it.second)) }
+        val f = filterBar.filter
+        // družstvá zo zoznamu, ktoré v tejto súťaži (a vybranom dni) ešte nebežali
+        val dayRows = if (f.day == null) inEvent else inEvent.filter { AttemptFilter.dayOf(it.info) == f.day }
+        val ran = dayRows.map { it.info.team.lowercase(Locale.getDefault()) }.toSet()
+        val notRun = Teams.list(prefs).filter { it.lowercase(Locale.getDefault()) !in ran }
+            .map { Row(null, AttemptInfo(team = it), Verdicts.NA) }
+        filterBar.build(inEvent.map { AttemptRow(it.file, it.info, it.verdict) }, Teams.list(prefs))
+
+        var list = (inEvent + notRun).filter { f.matches(AttemptRow(it.file, it.info, it.verdict)) || (it.verdict == Verdicts.NA && naMatches(it, f)) }
         if (bestOnly) {
-            list = list.groupBy { it.info.team.ifEmpty { it.file.name } }
-                .values.map { g ->
-                    g.filter { it.info.note.isEmpty() && it.info.result != null }
-                        .minByOrNull { it.info.result ?: Double.MAX_VALUE } ?: g.first()
-                }
+            list = list.groupBy { it.info.team.lowercase(Locale.getDefault()).ifEmpty { it.file?.name ?: "" } }
+                .values.map { g -> g.filter { it.ranked }.minByOrNull { it.info.result ?: Double.MAX_VALUE } ?: g.maxBy { it.info.startEpochMs } }
         }
+        val byGroup = compareBy<Row> { if (it.ranked) 0 else if (it.verdict == Verdicts.NA) 2 else 1 }
         rows = list.sortedWith(
-            compareBy<Row> { if (it.info.note.isNotEmpty() || it.info.result == null) 1 else 0 }
-                .thenBy { it.info.result ?: Double.MAX_VALUE }
-                .thenBy { it.info.startEpochMs }
+            when (f.sort) {
+                "time" -> compareBy<Row> { it.file == null }.thenByDescending { it.info.startEpochMs }
+                "team" -> compareBy<Row> { it.info.team.lowercase(Locale.getDefault()) }.thenBy { it.info.attemptNo }.thenBy { it.info.startEpochMs }
+                "attempt" -> compareBy<Row> { it.file == null }.thenBy { it.info.attemptNo }.thenBy { it.info.result ?: Double.MAX_VALUE }
+                else -> byGroup.thenBy { it.info.result ?: Double.MAX_VALUE }.thenBy { it.info.startEpochMs }
+            }
         )
         buildTable()
+        val counts = rows.groupingBy { it.verdict }.eachCount()
+        summary.text = Verdicts.ALL.joinToString("   ") { "${Verdicts.emoji(it)} ${Verdicts.short(prefs, it)}: ${counts[it] ?: 0}" }
         supportActionBar?.subtitle = when (filter) {
             ALL -> "Všetky súťaže"
             "" -> "Bez súťaže"
             else -> filter
-        } + " • ${rows.size} pokusov"
+        } + " • ${rows.count { it.file != null }} pokusov"
+    }
+
+    /** Riadok „ešte nebežali“ prejde filtrom len podľa družstva, verdiktu a textu. */
+    private fun naMatches(r: Row, f: AttemptFilter): Boolean {
+        if (f.verdicts.isNotEmpty() && Verdicts.NA !in f.verdicts) return false
+        if (f.attemptNo != null || f.minTime != null || f.maxTime != null) return false
+        if (f.team != null && !r.info.team.equals(f.team, true)) return false
+        if (f.text.isNotBlank() && !r.info.team.contains(f.text.trim(), true)) return false
+        return true
     }
 
     private fun buildEventBar(events: List<String>) {
@@ -193,41 +236,61 @@ class ResultsActivity : AppCompatActivity() {
         emptyText.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
         if (rows.isEmpty()) return
         val nf = maxFinals()
+        val hc = 0xFFFFAB91.toInt()
         val head = TableRow(this)
-        head.addView(cell("#", true, 0xFFFFAB91.toInt()))
-        head.addView(cell("Družstvo", true, 0xFFFFAB91.toInt()))
-        head.addView(cell("Pokus", true, 0xFFFFAB91.toInt()))
-        for (i in 0 until nf) head.addView(cell(if (nf == 2) (if (i == 0) "Ľavý" else "Pravý") else "Čas ${i + 1}", true, 0xFFFFAB91.toInt()))
-        head.addView(cell("Výsledok", true, 0xFFFFAB91.toInt()))
-        head.addView(cell("Čas", true, 0xFFFFAB91.toInt()))
-        head.addView(cell("Kamera", true, 0xFFFFAB91.toInt()))
+        head.addView(cell("#", true, hc))
+        head.addView(cell("Družstvo", true, hc))
+        head.addView(cell("Pokus", true, hc))
+        head.addView(cell("Verdikt", true, hc))
+        for (i in 0 until nf) head.addView(cell(if (nf == 2) (if (i == 0) "Ľavý" else "Pravý") else "Čas ${i + 1}", true, hc))
+        head.addView(cell("Výsledok", true, hc))
+        head.addView(cell("Nahraté", true, hc))
+        head.addView(cell("Kamera", true, hc))
+        head.addView(cell("Poznámka", true, hc))
         table.addView(head)
 
         var place = 0
         for ((idx, r) in rows.withIndex()) {
-            val valid = r.info.note.isEmpty() && r.info.result != null
+            val valid = r.ranked
             if (valid) place++
             val tr = TableRow(this).apply {
                 setBackgroundColor(if (idx % 2 == 0) 0x14FFFFFF else 0x00000000)
-                setOnClickListener { play(r.file) }
-                setOnLongClickListener {
-                    edit(r)
-                    true
-                }
+                val f = r.file
+                if (f != null) {
+                    setOnClickListener { play(f) }
+                    setOnLongClickListener {
+                        rowMenu(f)
+                        true
+                    }
+                } else setOnClickListener { toast("${r.info.team}: ${Verdicts.label(prefs, Verdicts.NA)}") }
             }
-            tr.addView(cell(if (valid) "$place." else "", bold = true))
-            tr.addView(cell(r.info.team.ifEmpty { "(bez družstva)" }, bold = true))
+            val vc = Verdicts.color(r.verdict)
+            tr.addView(cell(if (valid && filterBar.filter.sort.let { it == "" || it == "result" }) "$place." else "", bold = true))
+            tr.addView(cell(r.info.team.ifEmpty { "(bez družstva)" }, bold = true, color = if (r.file == null) 0xFFB0B0B0.toInt() else Color.WHITE))
             tr.addView(cell(if (r.info.attemptNo > 0) "${r.info.attemptNo}." else ""))
+            tr.addView(cell(Verdicts.short(prefs, r.verdict), bold = true, color = vc))
             for (i in 0 until nf) tr.addView(cell(r.info.finals.getOrNull(i) ?: "", alignEnd = true))
-            val res = when {
-                r.info.note.isNotEmpty() -> r.info.note
-                else -> Times.format(r.info.result) + if (r.info.manualResult != null) " ✎" else ""
-            }
-            tr.addView(cell(res, bold = true, color = if (valid) 0xFFFFEB3B.toInt() else 0xFFEF9A9A.toInt(), alignEnd = true))
+            val res = if (r.info.result != null) Times.format(r.info.result) + if (r.info.manualResult != null) " ✎" else "" else "–"
+            tr.addView(cell(res, bold = true, color = if (valid) 0xFFFFEB3B.toInt() else vc, alignEnd = true))
             tr.addView(cell(if (r.info.startEpochMs > 0) timeFmt.format(Date(r.info.startEpochMs)) else "", color = 0xFFB0B0B0.toInt()))
             tr.addView(cell(r.info.camera, color = 0xFFB0B0B0.toInt()))
+            tr.addView(cell(r.info.note, color = 0xFFB0B0B0.toInt()))
             table.addView(tr)
         }
+    }
+
+    private fun rowMenu(f: File) {
+        val items = arrayOf("▶ Prehrať", "✔ Verdikt…", "✎ Upraviť údaje…")
+        AlertDialog.Builder(this)
+            .setTitle(f.name)
+            .setItems(items) { _, w ->
+                when (w) {
+                    0 -> play(f)
+                    1 -> AttemptEditor.pickVerdict(this, listOf(f)) { reload() }
+                    2 -> AttemptEditor.show(this, f) { reload() }
+                }
+            }
+            .show()
     }
 
     private fun play(f: File) {
@@ -240,66 +303,30 @@ class ResultsActivity : AppCompatActivity() {
         )
     }
 
-    /** Ručná oprava: družstvo, výsledný čas, poznámka (NP = neplatný pokus). */
-    private fun edit(r: Row) {
-        val dp = resources.displayMetrics.density
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding((20 * dp).toInt(), (8 * dp).toInt(), (20 * dp).toInt(), 0)
-        }
-        fun field(hint: String, value: String, type: Int): EditText {
-            box.addView(TextView(this).apply { text = hint; alpha = 0.7f })
-            return EditText(this).apply {
-                setText(value)
-                inputType = type
-                box.addView(this)
-            }
-        }
-        val team = field("Družstvo", r.info.team, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS)
-        val result = field(
-            "Výsledný čas (prázdne = z časomiery)",
-            r.info.manualResult?.let { Times.format(it) } ?: "",
-            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-        )
-        val note = field("Poznámka (napr. NP = neplatný pokus)", r.info.note, InputType.TYPE_CLASS_TEXT)
-        AlertDialog.Builder(this)
-            .setTitle(r.file.name)
-            .setView(ScrollView(this).apply { addView(box) })
-            .setPositiveButton("Uložiť") { _, _ ->
-                val newInfo = r.info.copy(
-                    team = team.text.toString().trim(),
-                    manualResult = result.text.toString().replace(',', '.').trim().toDoubleOrNull(),
-                    note = note.text.toString().trim()
-                )
-                Sidecars.saveInfo(r.file, newInfo)
-                if (newInfo.team.isNotEmpty()) Teams.add(PreferenceManager.getDefaultSharedPreferences(this), newInfo.team)
-                reload()
-            }
-            .setNegativeButton("Zrušiť", null)
-            .show()
-    }
-
     // ------------------------------------------------------------------ export
 
     private fun resultLines(): List<List<String>> {
         val nf = maxFinals()
         val out = ArrayList<List<String>>()
-        val head = arrayListOf("Poradie", "Družstvo", "Pokus")
+        val head = arrayListOf("Poradie", "Družstvo", "Pokus", "Verdikt")
         for (i in 0 until nf) head.add(if (nf == 2) (if (i == 0) "Ľavý" else "Pravý") else "Čas ${i + 1}")
         head.addAll(listOf("Výsledok", "Poznámka", "Čas nahrávania", "Kamera", "Video"))
         out.add(head)
         var place = 0
         val dt = SimpleDateFormat("d.M.yyyy HH:mm:ss", Locale.getDefault())
         for (r in rows) {
-            val valid = r.info.note.isEmpty() && r.info.result != null
+            val valid = r.ranked
             if (valid) place++
-            val line = arrayListOf(if (valid) place.toString() else "", r.info.team, if (r.info.attemptNo > 0) r.info.attemptNo.toString() else "")
+            val line = arrayListOf(
+                if (valid) place.toString() else "", r.info.team,
+                if (r.info.attemptNo > 0) r.info.attemptNo.toString() else "", Verdicts.short(prefs, r.verdict)
+            )
             for (i in 0 until nf) line.add(r.info.finals.getOrNull(i) ?: "")
             line.add(if (r.info.result != null) Times.format(r.info.result).replace('.', ',') else "")
             line.add(r.info.note)
             line.add(if (r.info.startEpochMs > 0) dt.format(Date(r.info.startEpochMs)) else "")
             line.add(r.info.camera)
-            line.add(r.file.name)
+            line.add(r.file?.name ?: "")
             out.add(line)
         }
         return out
@@ -340,14 +367,15 @@ class ResultsActivity : AppCompatActivity() {
         val title = if (filter == ALL) "Výsledky" else "Výsledky – ${filter.ifEmpty { "bez súťaže" }}"
         var place = 0
         val body = rows.joinToString("\n") { r ->
-            val valid = r.info.note.isEmpty() && r.info.result != null
+            val valid = r.ranked
             if (valid) place++
             val p = if (valid) "$place." else "–"
-            val res = if (r.info.note.isNotEmpty()) r.info.note else Times.format(r.info.result)
+            val res = if (valid) Times.format(r.info.result) else Verdicts.short(prefs, r.verdict) +
+                if (r.info.result != null && r.verdict != Verdicts.NA) " (${Times.format(r.info.result)})" else ""
             val times = r.info.finals.joinToString(" / ")
             "$p ${r.info.team.ifEmpty { "?" }}${if (r.info.attemptNo > 0) " (${r.info.attemptNo}.)" else ""}  $res" +
                 if (times.isNotEmpty()) "   [$times]" else ""
-        }
+        } + "\n\n" + Verdicts.ALL.joinToString(", ") { Verdicts.full(prefs, it) }
         val send = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
             putExtra(Intent.EXTRA_SUBJECT, title)

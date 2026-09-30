@@ -44,4 +44,79 @@
             app:key="bg_record"
             app:summary="Nahrávanie pokračuje aj pri zhasnutej obrazovke, prichádzajúcom hovore alebo prepnutí aplikácie (experimentálne)"
             app:title="Nahrávať aj na pozadí" />
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Verdikty pokusov">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="verdict_prompt"
+            app:summary="Po uložení pokusu sa v kamere ukážu tlačidlá OK / NP / D. Bez voľby: s časom OK, bez času NP."
+            app:title="Po pokuse ponúknuť verdikt" />
+
+        <EditTextPreference
+            app:defaultValue="VERDIKT"
+            app:iconSpaceReserved="false"
+            app:key="cmd_verdict"
+            app:title="UDP príkaz na verdikt (VERDIKT:D, VERDIKT:NP, VERDIKT:OK)"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="OK"
+            app:iconSpaceReserved="false"
+            app:key="verdict_ok_short"
+            app:title="Skratka – pokus úspešný"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="pokus úspešný"
+            app:iconSpaceReserved="false"
+            app:key="verdict_ok_label"
+            app:title="Popis – OK"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="NP"
+            app:iconSpaceReserved="false"
+            app:key="verdict_np_short"
+            app:title="Skratka – nedokončený pokus"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="nedokončený pokus"
+            app:iconSpaceReserved="false"
+            app:key="verdict_np_label"
+            app:title="Popis – NP"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="D"
+            app:iconSpaceReserved="false"
+            app:key="verdict_d_short"
+            app:title="Skratka – diskvalifikovaný"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="diskvalifikovaný"
+            app:iconSpaceReserved="false"
+            app:key="verdict_d_label"
+            app:title="Popis – D"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="NA"
+            app:iconSpaceReserved="false"
+            app:key="verdict_na_short"
+            app:title="Skratka – ešte nebežali"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="ešte nebežali"
+            app:iconSpaceReserved="false"
+            app:key="verdict_na_label"
+            app:title="Popis – NA"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
 </PreferenceScreen>

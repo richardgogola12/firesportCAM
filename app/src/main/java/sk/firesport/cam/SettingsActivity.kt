@@ -236,6 +236,7 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
             else -> {
                 setPreferencesFromResource(R.xml.prefs_other, rootKey)
                 addProfilesCategory(preferenceScreen)
+                addCleanupCategory(preferenceScreen)
                 addInfoCategory(preferenceScreen)
             }
         }
@@ -534,6 +535,19 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
             .show()
     }
 
+    private fun addCleanupCategory(screen: PreferenceScreen) {
+        val ctx = preferenceManager.context
+        val cat = category(screen, "🧹 Upratovanie")
+        cat.add(Preference(ctx).apply {
+            title = "Upratať aplikáciu…"
+            summary = Cleanup.summary(ctx) + "\nDočasné súbory, staré alebo neúspešné videá, družstvá, nastavenia – bez odinštalovania."
+            setOnPreferenceClickListener {
+                Cleanup.showDialog(requireActivity()) { requireActivity().recreate() }
+                true
+            }
+        })
+    }
+
     private fun addInfoCategory(screen: PreferenceScreen) {
         val ctx = preferenceManager.context
         val cat = category(screen, "Informácie")
@@ -547,24 +561,6 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
             }
         })
         cat.add(info("Priečinok s videami", VideoStore.root(ctx).absolutePath))
-        cat.add(Preference(ctx).apply {
-            title = "Obnoviť všetky predvolené nastavenia"
-            summary = "Vráti všetky karty na pôvodné hodnoty (videá a profily ostanú)"
-            setOnPreferenceClickListener {
-                AlertDialog.Builder(requireContext())
-                    .setTitle("Obnoviť nastavenia?")
-                    .setMessage("Všetky nastavenia (aj overlayov) sa vrátia na predvolené hodnoty. Videá ostanú.")
-                    .setPositiveButton("Obnoviť") { _, _ ->
-                        val c = requireContext()
-                        prefs.edit().clear().commit()
-                        Prefs.initDefaults(c)
-                        requireActivity().recreate()
-                    }
-                    .setNegativeButton("Zrušiť", null)
-                    .show()
-                true
-            }
-        })
         val version = try {
             @Suppress("DEPRECATION")
             ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: ""

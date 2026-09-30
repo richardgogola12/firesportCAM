@@ -20,6 +20,14 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.5
+
+- **Verdikty pokusov:** OK (úspešný), NP (nedokončený), D (diskvalifikovaný), NA (ešte nebežali). Rýchla voľba po pokuse, UDP `VERDIKT:D`, skratky v Nastavenia → Ostatné.
+- **Výsledky:** stĺpec Verdikt, poradie len z OK pokusov, družstvá, ktoré nebežali, súčet verdiktov.
+- **Filtre a hľadanie** v galérii aj výsledkoch: družstvo, verdikt, deň, pokus, čas od–do, text, zoradenie.
+- **🧹 Upratovanie** bez odinštalovania (dočasné súbory, staré/neúspešné videá, družstvá, nastavenia, úplné vyčistenie).
+- **Stály podpisový kľúč** pre zostavenia z GitHubu – ďalšie verzie sa nainštalujú cez staré.
+
 ## Novinky vo verzii 2.4
 
 - **Počítadlo pokusov sa dá vynulovať** – v kamere (Družstvo → 🔄), v nastaveniach Súťaže alebo UDP príkazom `RESET` / `RESET:družstvo`.

@@ -25,6 +25,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.CheckBox
@@ -405,6 +406,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
                 "mark" -> rec.addMarker(arg)
                 "team" -> setTeam(arg, fromRemote = true)
                 "reset" -> resetAttempts(arg.ifEmpty { null }, fromRemote = true)
+                "verdict" -> applyVerdict(arg, fromRemote = true)
             }
         }
     }
@@ -434,12 +436,95 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
     override fun onSaved(file: File, markers: List<Marker>) {
         toast("Uložené: ${file.name}" + if (markers.isNotEmpty()) " (${markers.size} značiek)" else "")
+        lastSaved = file
+        pendingVerdict?.let { v ->
+            AttemptEditor.setVerdict(file, v)
+            pendingVerdict = null
+        }
+        if (prefs.getBoolean("verdict_prompt", true) && pendingVerdictSet.not()) showVerdictBar(file)
+        pendingVerdictSet = false
         updateTeamLabel()
         if (prefs.getBoolean("auto_copy_gallery", false)) {
             val appCtx = applicationContext
             Thread { VideoStore.copyToGallery(appCtx, file) }.start()
         }
         if (prefs.getBoolean("replay_enabled", false) && activityStarted) openReplay(file, markers)
+    }
+
+    // ------------------------------------------------------------------ verdikt pokusu
+
+    private var lastSaved: File? = null
+    /** Verdikt prijatý počas nahrávania – zapíše sa k práve nahrávanému pokusu. */
+    private var pendingVerdict: String? = null
+    private var pendingVerdictSet = false
+    private var verdictBar: View? = null
+    private val hideVerdictBar = Runnable { verdictBar?.let { (it.parent as? ViewGroup)?.removeView(it) }; verdictBar = null }
+
+    /** Verdikt z UDP alebo z tlačidla: počas pokusu sa zapamätá, inak sa zapíše k poslednému pokusu. */
+    private fun applyVerdict(arg: String, fromRemote: Boolean = false) {
+        val code = Verdicts.parse(prefs, arg) ?: run {
+            toast("Neznámy verdikt: $arg")
+            return
+        }
+        if (!fromRemote && isMaster()) CamLink.send(udpPort(), "${OverlayState.cmdVerdict}:${code.ifEmpty { "AUTO" }}")
+        if (rec.isBusy) {
+            pendingVerdict = code
+            pendingVerdictSet = true
+            toast("Verdikt pokusu: ${if (code.isEmpty()) "automaticky" else Verdicts.full(prefs, code)}")
+            return
+        }
+        val f = lastSaved ?: VideoStore.list(this).firstOrNull() ?: return
+        AttemptEditor.setVerdict(f, code)
+        hideVerdictBar.run()
+        if (activityStarted) toast("${Verdicts.emoji(code.ifEmpty { Verdicts.OK })} ${if (code.isEmpty()) "Verdikt: automaticky" else Verdicts.full(prefs, code)}")
+    }
+
+    /** Rýchla voľba verdiktu po pokuse (zmizne po 20 s). */
+    private fun showVerdictBar(file: File) {
+        hideVerdictBar.run()
+        mainHandler.removeCallbacks(hideVerdictBar)
+        val root = findViewById<ViewGroup>(android.R.id.content) ?: return
+        val dp = resources.displayMetrics.density
+        val info = Sidecars.loadInfo(file)
+        val bar = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setBackgroundColor(0xCC000000.toInt())
+            setPadding((10 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt(), (6 * dp).toInt())
+        }
+        bar.addView(android.widget.TextView(this).apply {
+            text = (info?.team?.takeIf { it.isNotEmpty() }?.let { t -> "$t${if (info.attemptNo > 0) " ${info.attemptNo}." else ""}: " } ?: "Verdikt: ") +
+                (info?.result?.let { Times.format(it) + "  " } ?: "")
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 14f
+        })
+        for (code in Verdicts.ATTEMPT) {
+            bar.addView(android.widget.TextView(this).apply {
+                text = Verdicts.short(prefs, code)
+                textSize = 16f
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                setTextColor(Verdicts.color(code))
+                setBackgroundResource(R.drawable.chip_bg)
+                setPadding((14 * dp).toInt(), (6 * dp).toInt(), (14 * dp).toInt(), (6 * dp).toInt())
+                setOnClickListener { applyVerdict(code) }
+            }, android.widget.LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { marginStart = (6 * dp).toInt() })
+        }
+        bar.addView(android.widget.TextView(this).apply {
+            text = "✕"
+            textSize = 16f
+            setTextColor(0xFFB0B0B0.toInt())
+            setPadding((12 * dp).toInt(), (6 * dp).toInt(), (8 * dp).toInt(), (6 * dp).toInt())
+            setOnClickListener { hideVerdictBar.run() }
+        })
+        val lp = android.widget.FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL
+        ).apply { topMargin = (56 * dp).toInt() }
+        root.addView(bar, lp)
+        verdictBar = bar
+        mainHandler.postDelayed(hideVerdictBar, 20_000)
     }
 
     /** Okamžité prehratie posledného pokusu. */

@@ -239,6 +239,26 @@ a neskôr ich jedným ťuknutím načítaš. Názov aktívneho profilu je v stav
 <p>Video sa uloží s názvom podľa družstva, výsledného času a pokusu, napr.
 <code>Dolany_16-84_2.pokus_20260929_101500.mp4</code>. V overlayoch môžeš použiť <code>{druzstvo}</code> a <code>{pokus}</code>.</p>
 
+<h3>Verdikty pokusov</h3>
+<p>Každý pokus má verdikt:</p>
+<ul>
+  <li><b>OK</b> – pokus úspešný (počíta sa do poradia),</li>
+  <li><b>NP</b> – nedokončený pokus,</li>
+  <li><b>D</b> – diskvalifikovaný,</li>
+  <li><b>NA</b> – družstvo zo zoznamu ešte nebežalo (vo výsledkoch sa ukáže samo).</li>
+</ul>
+<p>Ak verdikt nezadáš, pokus s časom je <b>OK</b> a pokus bez času <b>NP</b>. Po uložení pokusu sa v kamere na 20 s
+ukážu tlačidlá <b>OK / NP / D</b>. Verdikt sa dá zmeniť aj neskôr: v galérii podržaním videa → <b>Verdikt…</b>
+(aj pre viac vybraných videí naraz) alebo vo výsledkoch podržaním riadku. Z časomiery ho pošleš UDP príkazom
+<code>VERDIKT:D</code>, <code>VERDIKT:NP</code> alebo <code>VERDIKT:OK</code>. Ak príde počas pokusu, zapíše sa k práve nahrávanému pokusu.
+Skratky a popisy verdiktov zmeníš v <b>Nastavenia → ⚙ Ostatné → Verdikty pokusov</b>.</p>
+
+<h3>Filtre a hľadanie</h3>
+<p>V galérii aj vo výsledkoch je pod súťažami riadok filtrov: <b>zoradenie</b>, <b>družstvo</b>, <b>verdikt</b>, <b>deň</b>,
+<b>číslo pokusu</b>, <b>výsledný čas</b> (od–do) a <b>hľadanie</b> textu (družstvo, čas, názov súboru, poznámka).
+Filtre sa dajú kombinovať, napr. „Dolany, dnes, iba OK, do 20 s“. Tlačidlo <b>✖ Zrušiť filtre</b> ich vypne.
+Vo výsledkoch je hore aj súčet verdiktov.</p>
+
 <h3>Počítadlo pokusov</h3>
 <p>V <b>Nastavenia → 🏆 Súťaž → Číslovanie pokusov</b> vyberieš, ako sa pokusy rátajú:</p>
 <ul>
@@ -260,6 +280,18 @@ poznámku (napr. <code>NP</code> = neplatný pokus). V menu: <b>Iba najlepší p
 tlačidlo sa posunie na ďalšiu fázu (Rozvinutie, Spoj, Prúdnica, Terč). Aplikácia vypíše trvanie každej fázy
 a porovnanie s najlepším pokusom toho istého družstva (napr. <code>+0.21</code> = o 0,21 s pomalšie).
 Názvy fáz nastavíš v ⚙ → 🏆 Súťaž.</p>
+
+<h3>🧹 Upratovanie</h3>
+<p>Netreba aplikáciu odinštalovať. V <b>Galéria → ⋮ → 🧹 Upratovanie</b> alebo v <b>Nastavenia → ⚙ Ostatné → Upratovanie</b> môžeš:</p>
+<ul>
+  <li>vymazať dočasné súbory (exporty, zvyšky predstihu),</li>
+  <li>vymazať videá: neúspešné pokusy (NP a D), skúšobné videá bez družstva a času, staršie ako 7 / 30 dní, jednu súťaž alebo všetky,</li>
+  <li>vymazať prázdne súťaže a osirelé súbory,</li>
+  <li>vymazať zoznam družstiev a počítadlá pokusov,</li>
+  <li>vymazať profily nastavení alebo obnoviť predvolené nastavenia,</li>
+  <li><b>úplne vyčistiť aplikáciu</b> – všetko ako po novej inštalácii (aplikácia sa potom zavrie).</li>
+</ul>
+<p>Presnejšie upratovanie: v galérii nastav filter (napr. deň + verdikt D), daj <b>Vybrať viac → Vybrať všetko → Vymazať</b>.</p>
 
 <h2 id="kamery">Viac kamier a OBS</h2>
 <h3>Viac telefónov naraz</h3>

@@ -21,11 +21,22 @@ android {
         applicationId = "sk.firesport.cam"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "2.4"
+        versionCode = 6
+        versionName = "2.5"
     }
 
     signingConfigs {
+        // Stály kľúč pre zostavenia z GitHubu – nová verzia sa nainštaluje cez starú
+        // (inak má každé zostavenie iný náhodný debug kľúč a Android ju odmietne).
+        val ciKey = rootProject.file("keys/firesport-ci.keystore")
+        if (ciKey.exists()) {
+            create("ci") {
+                storeFile = ciKey
+                storePassword = "firesportci"
+                keyAlias = "firesportci"
+                keyPassword = "firesportci"
+            }
+        }
         if (hasReleaseKey) {
             create("release") {
                 storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
@@ -37,10 +48,14 @@ android {
     }
 
     buildTypes {
+        val ci = signingConfigs.findByName("ci")
+        debug {
+            if (ci != null) signingConfig = ci
+        }
         release {
             isMinifyEnabled = false
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release")
-            else signingConfigs.getByName("debug")
+            else ci ?: signingConfigs.getByName("debug")
         }
     }
 

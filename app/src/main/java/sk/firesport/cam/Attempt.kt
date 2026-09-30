@@ -20,8 +20,10 @@ data class AttemptInfo(
     val finals: List<String> = emptyList(),
     /** Ručne opravený výsledný čas (null = vypočítať z finals). */
     val manualResult: Double? = null,
-    /** Poznámka, napr. "NP" (neplatný pokus). */
-    val note: String = ""
+    /** Poznámka k pokusu. */
+    val note: String = "",
+    /** Verdikt: OK, NP, D alebo "" = automaticky (s časom OK, bez času NP). */
+    val verdict: String = ""
 ) {
     /** Výsledný čas: horší (vyšší) z časov terčov, alebo ručne zadaný. */
     val result: Double?
@@ -37,6 +39,7 @@ data class AttemptInfo(
         put("finals", JSONArray(finals))
         if (manualResult != null) put("manualResult", manualResult)
         put("note", note)
+        put("verdict", verdict)
     }
 
     companion object {
@@ -52,10 +55,77 @@ data class AttemptInfo(
                 durationMs = o.optLong("durationMs"),
                 finals = finals,
                 manualResult = if (o.has("manualResult")) o.optDouble("manualResult") else null,
-                note = o.optString("note")
+                note = o.optString("note"),
+                verdict = o.optString("verdict")
             )
         }
     }
+}
+
+/**
+ * Verdikty pokusov: OK = úspešný, NP = nedokončený, D = diskvalifikovaný,
+ * NA = družstvo ešte nebežalo (nemá žiadny pokus).
+ * Skratky a popisy sa dajú zmeniť v Nastavenia → Ostatné.
+ */
+object Verdicts {
+    const val OK = "OK"
+    const val NP = "NP"
+    const val D = "D"
+    const val NA = "NA"
+
+    /** Verdikty, ktoré môže mať nahraný pokus. */
+    val ATTEMPT = listOf(OK, NP, D)
+    val ALL = listOf(OK, NP, D, NA)
+
+    private val DEF_LABEL = mapOf(OK to "pokus úspešný", NP to "nedokončený pokus", D to "diskvalifikovaný", NA to "ešte nebežali")
+
+    fun short(p: android.content.SharedPreferences, code: String): String =
+        Prefs.str(p, "verdict_${code.lowercase()}_short", code).ifEmpty { code }
+
+    fun label(p: android.content.SharedPreferences, code: String): String =
+        Prefs.str(p, "verdict_${code.lowercase()}_label", DEF_LABEL[code] ?: code).ifEmpty { DEF_LABEL[code] ?: code }
+
+    /** „OK – pokus úspešný“ */
+    fun full(p: android.content.SharedPreferences, code: String) = "${short(p, code)} – ${label(p, code)}"
+
+    fun color(code: String): Int = when (code) {
+        OK -> 0xFF81C784.toInt()
+        NP -> 0xFFFFB74D.toInt()
+        D -> 0xFFE57373.toInt()
+        else -> 0xFFB0B0B0.toInt()
+    }
+
+    fun emoji(code: String): String = when (code) {
+        OK -> "✅"
+        NP -> "⚠"
+        D -> "⛔"
+        else -> "⏳"
+    }
+
+    /** Text z UDP / od používateľa → kód verdiktu ("" = automaticky, null = neznámy). */
+    fun parse(p: android.content.SharedPreferences, s: String): String? {
+        val t = s.trim()
+        if (t.isEmpty() || t.equals("AUTO", true)) return ""
+        for (c in ATTEMPT) if (t.equals(c, true) || t.equals(short(p, c), true)) return c
+        return when (t.uppercase()) {
+            "DQ", "DIS", "DISK" -> D
+            "N", "NEDOKONCENY", "NEPLATNY" -> NP
+            "U", "USPESNY" -> OK
+            else -> null
+        }
+    }
+
+    /** Verdikt pokusu – nastavený ručne, inak automaticky podľa času. */
+    fun of(p: android.content.SharedPreferences, info: AttemptInfo): String {
+        if (info.verdict in ATTEMPT) return info.verdict
+        // staršie pokusy mali NP / D zapísané v poznámke
+        val legacy = info.note.trim().uppercase()
+        if (legacy == NP || legacy == D || legacy == "DQ") return if (legacy == NP) NP else D
+        return if (info.result != null) OK else NP
+    }
+
+    /** Pokus sa počíta do poradia: úspešný a má čas. */
+    fun ranked(p: android.content.SharedPreferences, info: AttemptInfo) = of(p, info) == OK && info.result != null
 }
 
 /** Práca s časmi v texte ("L 16.84" → 16.84). */
