@@ -1,0 +1,39 @@
+81:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:395:23 Incorrect character literal.
+82:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:395:24 Syntax error: Expecting ','.
+83:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:396:1 Incorrect character literal.
+84:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:396:3 Syntax error: Expecting ')'.
+85:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:400:18 Cannot infer type for this parameter. Specify it explicitly.
+86:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:403:24 Syntax error: Expecting '"'.
+87:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:1 Unresolved reference 'porovnanie'.
+88:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:12 Unresolved reference 's'.
+89:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:24 Unresolved reference 'pokusom'.
+90:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:31 Syntax error: Expecting ')'.
+91:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:33 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+96:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:395:23 Incorrect character literal.
+97:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:395:24 Syntax error: Expecting ','.
+98:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:396:1 Incorrect character literal.
+99:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:396:3 Syntax error: Expecting ')'.
+100:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:400:18 Cannot infer type for this parameter. Specify it explicitly.
+101:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:403:24 Syntax error: Expecting '"'.
+102:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:1 Unresolved reference 'porovnanie'.
+103:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:12 Unresolved reference 's'.
+104:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:24 Unresolved reference 'pokusom'.
+105:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:31 Syntax error: Expecting ')'.
+106:e: file:///home/runner/work/firesportCAM/firesportCAM/app/src/main/java/sk/firesport/cam/PlayerActivity.kt:404:33 Syntax error: Unexpected tokens (use ';' to separate expressions on the same line).
+111:FAILURE: Build completed with 2 failures.
+115:* What went wrong:
+125:* Exception is:
+126:org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
+136:	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+159:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+261:	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+284:Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+285:	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:21)
+320:* What went wrong:
+330:* Exception is:
+331:org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileReleaseKotlin'.
+341:	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+367:Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+471:	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+497:Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+498:	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:21)
