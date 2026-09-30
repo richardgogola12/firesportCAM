@@ -392,16 +392,14 @@ class PlayerActivity : AppCompatActivity() {
                 val diff = sec - r
                 sb.append(String.format(Locale.ROOT, "  (%+.2f)", diff))
             }
-            sb.append('
-')
+            sb.append('\n')
         }
         val total = (splits.last().second - splits.first().second) / 1000.0
         sb.append(String.format(Locale.ROOT, "%-11s %6.2f s", "Spolu", total))
         bestRef?.let { (name, ref2) ->
             val rt = (ref2.last().second - ref2.first().second) / 1000.0
             sb.append(String.format(Locale.ROOT, "  (%+.2f)", total - rt))
-            sb.append("
-porovnanie s najlepším pokusom: ").append(name)
+            sb.append("\nporovnanie s najlepším pokusom: ").append(name)
         }
         splitsLabel.text = sb.toString()
         splitsLabel.visibility = View.VISIBLE
