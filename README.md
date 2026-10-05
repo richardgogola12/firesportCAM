@@ -20,6 +20,11 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.8
+
+- **RS232 cez USB OTG → UDP** – CH340, CP210x, FTDI, PL2303, CDC; všetky parametre linky (rýchlosť, bity, parita, stop bity, riadenie toku, DTR/RTS), koniec správy (CR/LF, vlastný oddeľovač, prestávka), zoznam ignorovaných textov, UDP broadcast alebo IP adresy, predpona/koniec/kódovanie. Samostatné vlákna, 250+ správ/s, test výkonu.
+- **Export a import profilu** do súboru .json (aj s logom).
+
 ## Novinky vo verzii 2.7
 
 - **Nové diaľkové ovládanie** – responzívna stránka pre mobil aj PC: veľké tlačidlo nahrávania, družstvo, verdikt, vynulovanie pokusov, stav overlayov.

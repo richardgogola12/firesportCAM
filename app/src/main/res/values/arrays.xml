@@ -256,4 +256,146 @@
         <item>reset</item>
         <item>event</item>
     </string-array>
+    <string-array name="rs_device_entries">
+        <item>Automaticky – prvý nájdený</item>
+    </string-array>
+    <string-array name="rs_device_values">
+        <item>auto</item>
+    </string-array>
+
+    <string-array name="rs_baud_entries">
+        <item>1200 Bd</item>
+        <item>2400 Bd</item>
+        <item>4800 Bd</item>
+        <item>9600 Bd</item>
+        <item>14400 Bd</item>
+        <item>19200 Bd</item>
+        <item>38400 Bd</item>
+        <item>57600 Bd</item>
+        <item>115200 Bd</item>
+        <item>230400 Bd</item>
+        <item>460800 Bd</item>
+        <item>921600 Bd</item>
+    </string-array>
+    <string-array name="rs_baud_values">
+        <item>1200</item>
+        <item>2400</item>
+        <item>4800</item>
+        <item>9600</item>
+        <item>14400</item>
+        <item>19200</item>
+        <item>38400</item>
+        <item>57600</item>
+        <item>115200</item>
+        <item>230400</item>
+        <item>460800</item>
+        <item>921600</item>
+    </string-array>
+
+    <string-array name="rs_databits_entries">
+        <item>8</item>
+        <item>7</item>
+        <item>6</item>
+        <item>5</item>
+    </string-array>
+    <string-array name="rs_databits_values">
+        <item>8</item>
+        <item>7</item>
+        <item>6</item>
+        <item>5</item>
+    </string-array>
+
+    <string-array name="rs_parity_entries">
+        <item>Žiadna (N)</item>
+        <item>Nepárna (O)</item>
+        <item>Párna (E)</item>
+        <item>Mark (M)</item>
+        <item>Space (S)</item>
+    </string-array>
+    <string-array name="rs_parity_values">
+        <item>none</item>
+        <item>odd</item>
+        <item>even</item>
+        <item>mark</item>
+        <item>space</item>
+    </string-array>
+
+    <string-array name="rs_stopbits_entries">
+        <item>1</item>
+        <item>1,5</item>
+        <item>2</item>
+    </string-array>
+    <string-array name="rs_stopbits_values">
+        <item>1</item>
+        <item>1.5</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="rs_flow_entries">
+        <item>Žiadne</item>
+        <item>Hardvérové RTS/CTS</item>
+        <item>Hardvérové DTR/DSR</item>
+        <item>Softvérové XON/XOFF</item>
+    </string-array>
+    <string-array name="rs_flow_values">
+        <item>none</item>
+        <item>rtscts</item>
+        <item>dtrdsr</item>
+        <item>xonxoff</item>
+    </string-array>
+
+    <string-array name="rs_framing_entries">
+        <item>Koniec riadku CR alebo LF (odporúčané)</item>
+        <item>LF (\\n)</item>
+        <item>CR (\\r)</item>
+        <item>Vlastný oddeľovač</item>
+        <item>Prestávka v dátach</item>
+    </string-array>
+    <string-array name="rs_framing_values">
+        <item>any</item>
+        <item>lf</item>
+        <item>cr</item>
+        <item>custom</item>
+        <item>gap</item>
+    </string-array>
+
+    <string-array name="rs_encoding_entries">
+        <item>UTF-8</item>
+        <item>Windows-1250</item>
+        <item>ISO-8859-2</item>
+        <item>ISO-8859-1</item>
+        <item>US-ASCII</item>
+    </string-array>
+    <string-array name="rs_encoding_values">
+        <item>UTF-8</item>
+        <item>windows-1250</item>
+        <item>ISO-8859-2</item>
+        <item>ISO-8859-1</item>
+        <item>US-ASCII</item>
+    </string-array>
+
+    <string-array name="rs_udp_target_entries">
+        <item>Broadcast – všetky zariadenia v sieti</item>
+        <item>Len zadané IP adresy</item>
+        <item>Broadcast aj zadané IP adresy</item>
+    </string-array>
+    <string-array name="rs_udp_target_values">
+        <item>broadcast</item>
+        <item>ips</item>
+        <item>both</item>
+    </string-array>
+
+    <string-array name="rs_udp_suffix_entries">
+        <item>Nič (len text)</item>
+        <item>LF (\\n)</item>
+        <item>CR (\\r)</item>
+        <item>CR LF (\\r\\n)</item>
+    </string-array>
+    <string-array name="rs_udp_suffix_values">
+        <item>none</item>
+        <item>lf</item>
+        <item>cr</item>
+        <item>crlf</item>
+    </string-array>
+
 </resources>

@@ -43,6 +43,7 @@
   <li><a href="#porovnanie">Porovnanie dvoch pokusov</a></li>
   <li><a href="#dialkove">Diaľkové ovládanie</a></li>
   <li><a href="#profily">Profily nastavení</a></li>
+  <li><a href="#rs232">RS232 cez USB → UDP</a></li>
   <li><a href="#pozadie">Nahrávanie na pozadí, batéria a miesto</a></li>
   <li><a href="#druzstva">Družstvá, výsledky a medzičasy</a></li>
   <li><a href="#kamery">Viac kamier a OBS</a></li>
@@ -231,6 +232,28 @@ Tlačidlami <i>A ◀ ▶</i> a <i>B ◀ ▶</i> doladíš každé video zvláš�
 <h2 id="profily">12. Profily nastavení</h2>
 <p>V <b>⚙ → Ostatné → Profily</b> uložíš všetky aktuálne nastavenia pod názvom (napr. „Súťaž večer“, „Tréning“)
 a neskôr ich jedným ťuknutím načítaš. Názov aktívneho profilu je v stavovom riadku (👤).</p>
+<p><b>Export a import:</b> <b>⚙ → Ostatné → Profily → 📤 Exportovať do súboru</b> uloží aktuálne nastavenia alebo uložený profil
+(aj s logom) do súboru <code>.json</code> – napr. do Stiahnutých súborov alebo na Disk Google. Na inom telefóne ho načítaš cez
+<b>📥 Importovať zo súboru</b>, zadáš názov a môžeš ho hneď načítať.</p>
+
+<h2 id="rs232">RS232 cez USB → UDP</h2>
+<p>Telefón vie prijímať dáta zo sériovej linky (RS232) cez USB-sériový prevodník pripojený káblom OTG a posielať ich ďalej cez UDP
+– napr. časomieru bez ESP-01 alebo iné zariadenie so sériovým výstupom. Podporované prevodníky: CH340/CH341, CP210x, FTDI, PL2303 a USB CDC
+(Arduino, Raspberry Pi Pico, ESP32).</p>
+<ol>
+  <li>Pripoj prevodník cez OTG. Android ponúkne <b>Firesport Cam</b> – zaškrtni „Používať predvolene“, povolenie sa zapamätá.</li>
+  <li>V <b>⚙ → 🔌 RS232</b> zapni <b>Prijímať RS232</b> a nastav rýchlosť, dátové bity, paritu, stop bity a riadenie toku podľa zariadenia (napr. 9600 8N1).</li>
+  <li><b>Koniec správy</b> – väčšina zariadení končí správu znakom CR alebo LF; inak vlastný oddeľovač (napr. <code>;</code> alebo <code>\x03</code>) alebo prestávka v dátach.</li>
+  <li><b>UDP výstup</b> – broadcast do celej siete alebo len na zadané IP adresy, port (5000), predpona a koniec správy, kódovanie.</li>
+  <li><b>Zobrazovať aj v tejto aplikácii</b> – správy idú aj do overlayov a príkazov tohto telefónu.</li>
+</ol>
+<p><b>Ignorované texty</b> – jeden na riadok: <code>T:00.00</code> presne, <code>*ERROR*</code> obsahuje, <code>M:*</code> začína,
+<code>*;;</code> končí, <code>re:^PING</code> regulárny výraz, <code>#</code> poznámka. Ignorované správy sa nikam neposielajú.</p>
+<p><b>Výkon:</b> čítanie, odosielanie UDP a zobrazenie bežia každé vo vlastnom vlákne. Každá správa je samostatný UDP paket
+(stovky až tisíce za sekundu). Overlay v aplikácii zobrazuje vždy najnovší čas, príkazy sa nikdy nevynechajú.
+Tlačidlo <b>⚡ Test výkonu</b> pošle 250 správ/s počas 10 s celou cestou – prijaté aj odoslané musia ukázať 250/s, zahodené 0.
+Pri vysokom toku je spoľahlivejšie posielať na konkrétne IP adresy ako broadcast (broadcast cez Wi-Fi ide najpomalšou rýchlosťou).</p>
+<p>Most beží, kým je aplikácia spustená (aj v nastaveniach a galérii). Stav a počet správ za sekundu je v stavovom riadku kamery a v karte RS232.</p>
 
 <h2 id="pozadie">13. Nahrávanie na pozadí, batéria a miesto</h2>
 <ul>

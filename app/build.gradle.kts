@@ -21,8 +21,8 @@ android {
         applicationId = "sk.firesport.cam"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "2.7"
+        versionCode = 9
+        versionName = "2.8"
     }
 
     signingConfigs {
@@ -101,4 +101,7 @@ dependencies {
     implementation("androidx.media3:media3-transformer:$media3Version")
     implementation("androidx.media3:media3-effect:$media3Version")
     implementation("androidx.media3:media3-common:$media3Version")
+
+    // RS232 cez USB OTG (CH340, CP210x, FTDI, PL2303, CDC-ACM)
+    implementation("com.github.mik3y:usb-serial-for-android:3.11.0")
 }

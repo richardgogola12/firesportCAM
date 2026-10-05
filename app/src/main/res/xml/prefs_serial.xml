@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="RS232 cez USB (OTG)">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="rs_enabled"
+            app:summary="Dáta z USB-sériového prevodníka (CH340, CP210x, FTDI, PL2303, CDC) sa posielajú ďalej cez UDP. Beží, kým je aplikácia spustená."
+            app:title="Prijímať RS232" />
+
+        <ListPreference
+            app:defaultValue="auto"
+            app:entries="@array/rs_device_entries"
+            app:entryValues="@array/rs_device_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_device"
+            app:title="Prevodník"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="0"
+            app:iconSpaceReserved="false"
+            app:key="rs_port_index"
+            app:title="Číslo portu (viacportové prevodníky, od 0)"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Parametre linky">
+
+        <ListPreference
+            app:defaultValue="9600"
+            app:entries="@array/rs_baud_entries"
+            app:entryValues="@array/rs_baud_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_baud"
+            app:title="Rýchlosť (Bd)"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="8"
+            app:entries="@array/rs_databits_entries"
+            app:entryValues="@array/rs_databits_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_databits"
+            app:title="Dátové bity"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="none"
+            app:entries="@array/rs_parity_entries"
+            app:entryValues="@array/rs_parity_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_parity"
+            app:title="Parita"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="1"
+            app:entries="@array/rs_stopbits_entries"
+            app:entryValues="@array/rs_stopbits_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_stopbits"
+            app:title="Stop bity"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="none"
+            app:entries="@array/rs_flow_entries"
+            app:entryValues="@array/rs_flow_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_flow"
+            app:title="Riadenie toku"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_dtr"
+            app:summary="Niektoré zariadenia (napr. Arduino) potrebujú DTR / RTS"
+            app:title="DTR zapnuté" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_rts"
+            app:summary="Pri riadení toku RTS/CTS sa nastavuje samo"
+            app:title="RTS zapnuté" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Správy">
+
+        <ListPreference
+            app:defaultValue="any"
+            app:entries="@array/rs_framing_entries"
+            app:entryValues="@array/rs_framing_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_framing"
+            app:title="Koniec správy"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue=";"
+            app:iconSpaceReserved="false"
+            app:key="rs_terminator"
+            app:title="Vlastný oddeľovač"
+            app:summary="Pre „vlastný oddeľovač“. Escape: \\n \\r \\t \\x03" />
+
+        <EditTextPreference
+            app:defaultValue="20"
+            app:iconSpaceReserved="false"
+            app:key="rs_gap_ms"
+            app:title="Prestávka medzi správami (ms)"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="256"
+            app:iconSpaceReserved="false"
+            app:key="rs_max_len"
+            app:title="Maximálna dĺžka správy (znaky)"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="UTF-8"
+            app:entries="@array/rs_encoding_entries"
+            app:entryValues="@array/rs_encoding_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_encoding"
+            app:title="Kódovanie textu"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_trim"
+            app:summary="Odstráni medzery na začiatku a konci"
+            app:title="Orezať medzery" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_strip_ctrl"
+            app:summary="STX, ETX a iné znaky pod 0x20"
+            app:title="Odstrániť riadiace znaky" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_skip_empty"
+            app:summary=""
+            app:title="Preskočiť prázdne správy" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="rs_dedupe"
+            app:summary="Ak príde ten istý text znova hneď za sebou, preskočí sa"
+            app:title="Neposielať opakovanú rovnakú správu" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Ignorované texty">
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="rs_ignore"
+            app:title="Zoznam ignorovaných textov" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_ignore_case"
+            app:summary=""
+            app:title="Nerozlišovať veľké a malé písmená" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="UDP výstup">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_enabled"
+            app:summary="Každá prijatá správa = jeden UDP paket"
+            app:title="Posielať do UDP" />
+
+        <ListPreference
+            app:defaultValue="broadcast"
+            app:entries="@array/rs_udp_target_entries"
+            app:entryValues="@array/rs_udp_target_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_target"
+            app:title="Kam posielať"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_ips"
+            app:title="IP adresy cieľov" />
+
+        <EditTextPreference
+            app:defaultValue="5000"
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_port"
+            app:title="UDP port cieľa"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue=""
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_prefix"
+            app:title="Predpona pred správou"
+            app:summary="Pridá sa pred každú správu, napr. 1: (prázdne = nič)" />
+
+        <ListPreference
+            app:defaultValue="none"
+            app:entries="@array/rs_udp_suffix_entries"
+            app:entryValues="@array/rs_udp_suffix_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_suffix"
+            app:title="Koniec UDP správy"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="UTF-8"
+            app:entries="@array/rs_encoding_entries"
+            app:entryValues="@array/rs_encoding_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_udp_encoding"
+            app:title="Kódovanie UDP"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="rs_local"
+            app:summary="Správy idú aj do overlayov a príkazov tohto telefónu (ako z UDP)"
+            app:title="Zobrazovať aj v tejto aplikácii" />
+
+    </PreferenceCategory>
+</PreferenceScreen>

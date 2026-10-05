@@ -373,6 +373,17 @@ object OverlayState {
         return full.trim().ifEmpty { null }?.let { full }
     }
 
+    /** Je text príkaz (nie čas)? Príkazy sa pri rýchlom toku nikdy nezlučujú. */
+    fun isCommand(text: String): Boolean {
+        val t = text.trim()
+        if (t.startsWith("FSCAM:")) return true
+        if (matches(t, cmdStart) || matches(t, cmdStop) || matches(t, cmdMark) || matches(t, cmdClear) || matches(t, cmdReset)) return true
+        for (c in arrayOf(cmdMark, cmdClear, cmdReset, cmdTeam, cmdVerdict)) {
+            if (c.isNotEmpty() && t.length > c.length && t[c.length] == ':' && t.startsWith(c, ignoreCase = true)) return true
+        }
+        return false
+    }
+
     private fun matches(m: String, cmd: String) = cmd.isNotEmpty() && m.equals(cmd, ignoreCase = true)
 
     private fun setAndNotify(i: Int, text: String) {

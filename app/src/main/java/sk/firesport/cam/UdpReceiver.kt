@@ -90,6 +90,8 @@ class UdpReceiver(
                 while (running) {
                     val p = DatagramPacket(buf, buf.size)
                     s.receive(p)
+                    // vlastný broadcast z mostu RS232 → UDP sa tu druhýkrát nespracuje
+                    if (p.port == SerialHub.localUdpPort && isOwnAddress(p.address)) continue
                     val text = String(p.data, p.offset, p.length, charset)
                     val from = p.address?.hostAddress ?: ""
                     if (text.startsWith("FSCAM:DISCOVER")) {
@@ -119,6 +121,20 @@ class UdpReceiver(
                 socket = null
             }
         }
+    }
+
+    private var ownAddrs: Set<InetAddress> = emptySet()
+    private var ownAddrsAt = 0L
+
+    private fun isOwnAddress(a: InetAddress?): Boolean {
+        if (a == null) return false
+        if (a.isLoopbackAddress) return true
+        val now = System.currentTimeMillis()
+        if (now - ownAddrsAt > 10_000) {
+            ownAddrs = NetUtil.ipAddresses().mapNotNull { try { InetAddress.getByName(it) } catch (_: Exception) { null } }.toSet()
+            ownAddrsAt = now
+        }
+        return a in ownAddrs
     }
 
     @Suppress("DEPRECATION")

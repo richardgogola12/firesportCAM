@@ -45,6 +45,7 @@ class SettingsActivity : AppCompatActivity() {
             "ℹ Overlay 3" to SettingsPageFragment.PAGE_OVERLAY3,
             "🖼 Logo" to SettingsPageFragment.PAGE_LOGO,
             "📡 UDP" to SettingsPageFragment.PAGE_UDP,
+            "🔌 RS232" to SettingsPageFragment.PAGE_SERIAL,
             "⚡ Automatika" to SettingsPageFragment.PAGE_AUTO,
             "🎥 Kamery a OBS" to SettingsPageFragment.PAGE_REMOTE,
             "⚙ Ostatné" to SettingsPageFragment.PAGE_OTHER
@@ -123,6 +124,7 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
         const val PAGE_REMOTE = 8
         const val PAGE_OTHER = 9
         const val PAGE_COMPETITION = 10
+        const val PAGE_SERIAL = 11
 
         fun newInstance(page: Int) = SettingsPageFragment().apply {
             arguments = bundleOf("page" to page)
@@ -130,6 +132,15 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
     }
 
     private val prefs: SharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(requireContext()) }
+
+    /** null = aktuálne nastavenia, inak názov uloženého profilu */
+    private var exportName: String? = null
+    private val exportProfile = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) doExport(uri)
+    }
+    private val importProfile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) doImport(uri)
+    }
 
     private val pickLogo = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) importLogo(uri)
@@ -213,6 +224,7 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
             PAGE_OVERLAY2 -> buildOverlayPage(2)
             PAGE_OVERLAY3 -> buildOverlayPage(3)
             PAGE_LOGO -> buildLogoPage()
+            PAGE_SERIAL -> buildSerialPage(rootKey)
             PAGE_UDP -> {
                 setPreferencesFromResource(R.xml.prefs_udp, rootKey)
                 numberInput("udp_port")
@@ -245,11 +257,173 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
     override fun onResume() {
         super.onResume()
         prefs.registerOnSharedPreferenceChangeListener(posListener)
+        if (serialStatusPref != null) uiHandler.post(serialTicker)
     }
 
     override fun onPause() {
         prefs.unregisterOnSharedPreferenceChangeListener(posListener)
+        uiHandler.removeCallbacks(serialTicker)
         super.onPause()
+    }
+
+    // ------------------------------------------------------------------ RS232
+
+    private val uiHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var serialStatusPref: Preference? = null
+    private var serialStatsPref: Preference? = null
+    private val serialTicker = object : Runnable {
+        override fun run() {
+            serialStatusPref?.summary = SerialHub.status + (if (SerialHub.deviceName.isNotEmpty()) "\n" + SerialHub.deviceName else "")
+            serialStatsPref?.summary =
+                "${SerialHub.rxRate} správ/s prijatých • ${SerialHub.txRate}/s odoslaných cez UDP\n" +
+                    "spolu: prijaté ${SerialHub.rxCount.get()}, odoslané ${SerialHub.txCount.get()}, " +
+                    "ignorované ${SerialHub.ignoredCount.get()}, zahodené ${SerialHub.droppedCount.get()}, chyby ${SerialHub.errorCount.get()}\n" +
+                    "posledná: " + SerialHub.lastLine.take(60).ifEmpty { "–" }
+            uiHandler.postDelayed(this, 1000)
+        }
+    }
+
+    private fun buildSerialPage(rootKey: String?) {
+        SerialHub.init(requireContext())
+        setPreferencesFromResource(R.xml.prefs_serial, rootKey)
+        val ctx = preferenceManager.context
+        for (k in listOf("rs_port_index", "rs_gap_ms", "rs_max_len", "rs_udp_port")) numberInput(k)
+        findPreference<ListPreference>("rs_device")?.apply {
+            val devs = SerialHub.devices(requireContext())
+            val cur = prefs.getString("rs_device", "auto") ?: "auto"
+            val labels = arrayListOf("Automaticky – prvý nájdený")
+            val values = arrayListOf("auto")
+            devs.forEach { labels.add(it.second); values.add(it.first) }
+            if (cur !in values) {
+                labels.add("$cur (teraz nepripojený)")
+                values.add(cur)
+            }
+            entries = labels.toTypedArray()
+            entryValues = values.toTypedArray()
+            summaryProvider = Preference.SummaryProvider<ListPreference> { p ->
+                (p.entry?.toString() ?: "Automaticky") + if (devs.isEmpty()) "\nŽiadny prevodník nie je pripojený" else "\nPripojené: ${devs.size}"
+            }
+        }
+        findPreference<EditTextPreference>("rs_ignore")?.apply {
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                it.minLines = 5
+                it.isSingleLine = false
+                it.hint = "T:00.00\n*ERROR*\nM:*\nre:^PING"
+            }
+            summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
+                val n = (p.text ?: "").lines().count { it.isNotBlank() && !it.trim().startsWith("#") }
+                if (n == 0) "Zatiaľ nič – všetky správy idú ďalej" else "$n pravidiel (jedno na riadok)"
+            }
+        }
+        findPreference<EditTextPreference>("rs_udp_ips")?.apply {
+            setOnBindEditTextListener {
+                it.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                it.minLines = 3
+                it.isSingleLine = false
+                it.hint = "192.168.1.50\n192.168.1.51"
+            }
+            summaryProvider = Preference.SummaryProvider<EditTextPreference> { p ->
+                val l = (p.text ?: "").split(',', ';', '\n', ' ').map { it.trim() }.filter { it.isNotEmpty() }
+                if (l.isEmpty()) "Pre režim „Len zadané IP adresy“ – jedna na riadok" else l.joinToString(", ")
+            }
+        }
+        // nápoveda k ignorovaným textom pod zoznam
+        (findPreference<EditTextPreference>("rs_ignore")?.parent)?.add(info(
+            "Ako písať pravidlá",
+            "Jeden text na riadok:\n" +
+                "T:00.00 – presne tento text\n" +
+                "*ERROR* – obsahuje\n" +
+                "M:* – začína\n" +
+                "*;; – končí\n" +
+                "re:^PING – regulárny výraz\n" +
+                "# poznámka – riadok sa preskočí"
+        ))
+
+        val screen = preferenceScreen
+        val cat = PreferenceCategory(ctx).apply {
+            title = "Stav a test"
+            isIconSpaceReserved = false
+            order = -1
+        }
+        screen.addPreference(cat)
+        serialStatusPref = info("Stav", SerialHub.status).also { cat.add(it) }
+        serialStatsPref = info("Počítadlá", "–").also { cat.add(it) }
+        cat.add(Preference(ctx).apply {
+            title = "🔌 Pripojiť znova / povoliť USB"
+            summary = "Po pripojení prevodníka alebo ak si odmietol povolenie"
+            setOnPreferenceClickListener {
+                SerialHub.reconnect()
+                toast("Hľadám prevodník…")
+                true
+            }
+        })
+        cat.add(Preference(ctx).apply {
+            title = "⚡ Test výkonu: 250 správ/s počas 10 s"
+            summary = "Pošle skúšobné časy celou cestou (filter → UDP → aplikácia) aj bez prevodníka. Prijaté a odoslané musia byť 250/s."
+            setOnPreferenceClickListener {
+                if (!SerialHub.isRunning()) toast("Najprv zapni „Prijímať RS232“")
+                else {
+                    SerialHub.resetCounters()
+                    SerialHub.runTest(250, 10)
+                    toast("Test beží 10 s…")
+                }
+                true
+            }
+        })
+        cat.add(Preference(ctx).apply {
+            title = "Vynulovať počítadlá"
+            setOnPreferenceClickListener {
+                SerialHub.resetCounters()
+                true
+            }
+        })
+        uiHandler.removeCallbacks(serialTicker)
+        uiHandler.post(serialTicker)
+    }
+
+    // ------------------------------------------------------------------ export / import profilu
+
+    private fun doExport(uri: Uri) {
+        val c = requireContext()
+        try {
+            val json = ProfileStore.exportJson(c, prefs, exportName)
+            c.contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toString(2).toByteArray(Charsets.UTF_8)) }
+                ?: throw IllegalStateException("súbor sa nedá zapísať")
+            toast("Profil exportovaný")
+        } catch (e: Exception) {
+            toast("Export zlyhal: ${e.message}")
+        }
+    }
+
+    private fun doImport(uri: Uri) {
+        val c = requireContext()
+        val parsed = try {
+            val text = c.contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) }
+                ?: throw IllegalStateException("súbor sa nedá čítať")
+            ProfileStore.parseImport(text)
+        } catch (e: Exception) {
+            toast("Import zlyhal: ${e.message}")
+            return
+        }
+        textDialog("Názov importovaného profilu", parsed.name.ifEmpty { "Import" }) { name ->
+            if (name.isEmpty()) return@textDialog
+            if (!ProfileStore.saveImported(c, name, parsed)) {
+                toast("Profil sa nepodarilo uložiť")
+                return@textDialog
+            }
+            AlertDialog.Builder(c)
+                .setTitle("Profil „$name“ importovaný")
+                .setMessage("Načítať ho hneď? Aktuálne nastavenia sa nahradia nastaveniami z profilu (${parsed.count} položiek).")
+                .setPositiveButton("Načítať") { _, _ ->
+                    if (ProfileStore.load(c, prefs, name)) {
+                        toast("Profil „$name“ načítaný")
+                        requireActivity().recreate()
+                    } else toast("Načítanie zlyhalo")
+                }
+                .setNegativeButton("Neskôr") { _, _ -> requireActivity().recreate() }
+                .show()
+        }
     }
 
     private fun toast(s: String) = Toast.makeText(requireContext(), s, Toast.LENGTH_SHORT).show()
@@ -506,6 +680,31 @@ class SettingsPageFragment : PreferenceFragmentCompat() {
                         } else toast("Načítanie zlyhalo")
                     }
                     .show()
+                true
+            }
+        })
+        cat.add(Preference(ctx).apply {
+            title = "📤 Exportovať do súboru…"
+            summary = "Uloží nastavenia (aj logo) do súboru .json – na zálohu alebo do iného telefónu"
+            setOnPreferenceClickListener {
+                val list = ProfileStore.list(requireContext())
+                val labels = arrayOf("Aktuálne nastavenia") + list.map { "Profil „$it“" }
+                AlertDialog.Builder(requireContext())
+                    .setTitle("Čo exportovať")
+                    .setItems(labels) { _, w ->
+                        exportName = if (w == 0) null else list[w - 1]
+                        val base = VideoStore.safeName(exportName ?: current.ifEmpty { "nastavenia" }).replace(' ', '_')
+                        exportProfile.launch("FiresportCam_$base.json")
+                    }
+                    .show()
+                true
+            }
+        })
+        cat.add(Preference(ctx).apply {
+            title = "📥 Importovať zo súboru…"
+            summary = "Načíta profil zo súboru .json (export z tejto alebo inej Firesport Cam)"
+            setOnPreferenceClickListener {
+                importProfile.launch(arrayOf("application/json", "text/plain", "application/octet-stream", "*/*"))
                 true
             }
         })

@@ -187,6 +187,10 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         super.onCreate(savedInstanceState)
         Prefs.initDefaults(this)
         prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        // RS232 → UDP: správy sa spracujú aj tu (ako z UDP)
+        SerialHub.localSink = { text -> handleUdp(text, "", udpPort()) }
+        SerialHub.init(this)
+        if (intent?.action == android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED) SerialHub.deviceAttached()
         applyOrientation()
         setContentView(R.layout.activity_camera)
 
@@ -288,8 +292,17 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         super.onPause()
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+            SerialHub.deviceAttached()
+            toast("USB prevodník pripojený")
+        }
+    }
+
     override fun onDestroy() {
         if (OverlayState.listener === this) OverlayState.listener = null
+        SerialHub.localSink = null
         rec.release()
         stopBackgroundWork()
         camOwner.destroy()
@@ -599,7 +612,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             RecordingManager.State.BUFFERING -> "pripravená (predstih)"
             RecordingManager.State.IDLE -> "pripravená"
         }
-        val info = device.summary() + " • " + udpStatus
+        val info = device.summary() + " • " + udpStatus + (if (SerialHub.isRunning()) " • " + SerialHub.summary() else "")
         val o = org.json.JSONObject()
         o.put("state", state)
         o.put("recording", rec.isUserRecording)
@@ -1548,6 +1561,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             if (device.warnings.isNotEmpty()) sb.append("  ⚠ ").append(device.warnings.joinToString(", "))
             sb.append('\n').append(udpStatus).append(" • IP: ").append(udpAddress)
             if (OverlayState.lastSender.isNotEmpty()) sb.append(" • vysielač: ").append(OverlayState.lastSender)
+            if (SerialHub.isRunning()) sb.append('\n').append("🔌 ").append(SerialHub.summary())
             remote?.let { sb.append(" • 🌐 :").append(Prefs.int(prefs, "remote_port", 8080)) }
             val last = OverlayState.lastPacketAt
             if (last > 0) {
