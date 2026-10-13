@@ -21,8 +21,8 @@ android {
         applicationId = "sk.firesport.cam"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "2.9"
+        versionCode = 11
+        versionName = "3.0"
     }
 
     signingConfigs {

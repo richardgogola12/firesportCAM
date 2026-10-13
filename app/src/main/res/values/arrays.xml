@@ -428,4 +428,22 @@
         <item>ft</item>
         <item>times</item>
     </string-array>
+    <string-array name="auto_stop_mode_entries">
+        <item>Zastaviť po dobehu (počet sekúnd nižšie)</item>
+        <item>Zastaviť hneď</item>
+        <item>Nezastavovať (len ručne alebo max. dĺžka)</item>
+    </string-array>
+    <string-array name="auto_stop_mode_values">
+        <item>delay</item>
+        <item>now</item>
+        <item>off</item>
+    </string-array>
+    <string-array name="cmd_stop_meaning_entries">
+        <item>Časy zastavené – nahrávanie sa zastaví podľa „Zastavenie nahrávania“</item>
+        <item>Zastaviť nahrávanie hneď</item>
+    </string-array>
+    <string-array name="cmd_stop_meaning_values">
+        <item>event</item>
+        <item>now</item>
+    </string-array>
 </resources>

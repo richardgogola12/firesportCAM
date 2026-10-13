@@ -89,13 +89,10 @@ class RecordingManager(
     init {
         VideoStore.clearBuffer(ctx)
         handler.post(tick)
-        collector.onFinal = { m ->
-            val after = Prefs.int(prefs, "auto_stop_after_final", 0)
-            if (after > 0 && state == State.RECORDING) {
-                val at = SystemClock.elapsedRealtime() + after * 1000L
-                autoStopAt = if (autoStopAt > 0) minOf(autoStopAt, at) else at
-            }
-            cb.onMarker(m)
+        collector.onFinal = { m -> cb.onMarker(m) }
+        // zdroj neposiela STOP (napr. ESP-01 s textami) – zastavenie sa rozpozná z ustálených časov
+        collector.onAllStopped = {
+            if (prefs.getBoolean("auto_stop_infer", true)) timeStopped("ustálené časy")
         }
     }
 
@@ -202,6 +199,63 @@ class RecordingManager(
         s.recording?.stop()
     }
 
+    // ------------------------------------------------------------------ automatika
+    //
+    // Zdroje (rámec RW:, udalosti START/STOP z časomiery, UDP príkazy, ustálené časy v overlayoch)
+    // hlásia len UDALOSTI: „čas odštartoval“ a „všetky časy zastavené“.
+    // O AKCIÁCH (spustiť / zastaviť nahrávanie, kedy) rozhoduje len táto časť podľa karty Automatika.
+    // Každá udalosť sa v pokuse uplatní najviac raz, takže viac zdrojov naraz sa nebije.
+
+    /** Čas v tomto pokuse už zastavil (zastavenie nahrávania je naplánované / vykonané). */
+    private var stopHandled = false
+    /** Nový štart prišiel počas dobehu / ukladania – spustiť hneď, ako sa uloží. */
+    private var startAfterSave = false
+
+    /** Udalosť „čas odštartoval“. */
+    fun timeStarted(source: String) {
+        if (!prefs.getBoolean("auto_start", true)) return
+        when (state) {
+            State.RECORDING -> {
+                // nový pokus, kým predchádzajúci dobieha po zastavení času → uložiť a začať znova
+                if (stopHandled && prefs.getBoolean("auto_restart", true)) {
+                    startAfterSave = true
+                    cb.onMessage("Nový štart ($source) – predchádzajúci pokus sa ukladá")
+                    stopUser()
+                }
+            }
+            State.PROCESSING -> if (prefs.getBoolean("auto_restart", true)) startAfterSave = true
+            else -> startUser()
+        }
+    }
+
+    /** Udalosť „všetky časy zastavené“ – zastavenie nahrávania podľa nastavenia. */
+    fun timeStopped(source: String) {
+        if (state != State.RECORDING || stopHandled) return
+        stopHandled = true
+        collector.finalizeAll()
+        when (prefs.getString("auto_stop_mode", "delay") ?: "delay") {
+            "off" -> Unit
+            "now" -> {
+                cb.onMessage("Čas zastavený ($source) – nahrávanie končí")
+                stopUser()
+            }
+            else -> {
+                val x = Prefs.int(prefs, "auto_stop_after_final", 5).coerceAtLeast(0)
+                if (x == 0) {
+                    stopUser()
+                } else {
+                    val at = SystemClock.elapsedRealtime() + x * 1000L
+                    autoStopAt = if (autoStopAt > 0) minOf(autoStopAt, at) else at
+                    cb.onMessage("Čas zastavený ($source) – nahrávanie skončí o $x s")
+                }
+            }
+        }
+    }
+
+    /** Koľko ms zostáva do automatického zastavenia (0 = nič nie je naplánované). */
+    fun autoStopRemainingMs(): Long =
+        if (state == State.RECORDING && autoStopAt > 0) (autoStopAt - SystemClock.elapsedRealtime()).coerceAtLeast(0L) else 0L
+
     /** Pridá značku v aktuálnom čase nahrávania. */
     fun addMarker(text: String) {
         val s = active ?: return
@@ -228,6 +282,7 @@ class RecordingManager(
         collector.stableMs = Prefs.int(prefs, "marker_stable_ms", 1000).toLong().coerceAtLeast(100L)
         collector.ignoreZero = prefs.getBoolean("marker_ignore_zero", true)
         collector.reset((0 until TEXT_OVERLAYS).map { OverlayState.displayText(it) })
+        stopHandled = false
         val maxS = Prefs.int(prefs, "auto_stop_after", 0)
         autoStopAt = if (maxS > 0) userPressedAt + maxS * 1000L else 0L
         if (prefs.getBoolean("bg_record", false)) RecordingService.start(ctx)
@@ -247,6 +302,10 @@ class RecordingManager(
                 s.rotate = true
                 s.recording?.stop()
             }
+        }
+        if (startAfterSave && cameraReady && (state == State.IDLE || state == State.BUFFERING)) {
+            startAfterSave = false
+            startUser()
         }
         if (state == State.RECORDING) {
             collector.tick()

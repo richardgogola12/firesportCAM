@@ -9,7 +9,7 @@ import java.io.File
 object ProfileStore {
 
     /** Kľúče, ktoré sa do profilu neukladajú. */
-    private val SKIP = setOf("migrated_v2", "migrated_live", "profile_name", "_has_set_default_values")
+    private val SKIP = setOf("migrated_v2", "migrated_live", "migrated_auto", "profile_name", "_has_set_default_values")
 
     private fun dir(ctx: Context) = File(ctx.filesDir, "profiles").apply { mkdirs() }
 
@@ -68,6 +68,12 @@ object ProfileStore {
                     "f" -> ed.putFloat(k, o.getDouble("v").toFloat())
                     "s" -> ed.putString(k, o.getString("v"))
                 }
+            }
+            // profil zo staršej verzie (pred 3.0) – automatika ako vtedy
+            if (!json.has("auto_stop_mode") && json.has("auto_stop_after_final")) {
+                val x = json.getJSONObject("auto_stop_after_final").optString("v").trim().toIntOrNull() ?: 0
+                ed.putString("auto_stop_mode", if (x > 0) "delay" else "off")
+                ed.putString("cmd_stop_meaning", if (x > 0) "event" else "now")
             }
             ed.putString("profile_name", name)
             ed.commit()

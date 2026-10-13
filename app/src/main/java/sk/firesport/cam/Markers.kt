@@ -89,7 +89,13 @@ class MarkerCollector {
         var changedVideoMs = 0L
         var changedAt = 0L
         var pending = false
+        /** Čas sa v tomto pokuse menil (bežal) – počíta sa do „všetky časy zastavené“. */
+        var seen = false
     }
+
+    /** Všetky časy, ktoré v pokuse bežali, sú ustálené (zdroj neposlal STOP). */
+    var onAllStopped: (() -> Unit)? = null
+    private var allFired = false
 
     private val tracks = Array(TEXT_OVERLAYS) { Track() }
     val markers = ArrayList<Marker>()
@@ -110,7 +116,9 @@ class MarkerCollector {
         for (i in tracks.indices) {
             tracks[i].text = currentTexts.getOrNull(i)?.trim() ?: ""
             tracks[i].pending = false
+            tracks[i].seen = false
         }
+        allFired = false
     }
 
     private fun isZero(t: String) = t.none { it in '1'..'9' }
@@ -124,6 +132,10 @@ class MarkerCollector {
         tr.changedVideoMs = videoMs
         tr.changedAt = SystemClock.elapsedRealtime()
         tr.pending = t.isNotEmpty() && !(ignoreZero && isZero(t))
+        if (tr.pending && Times.parse(t) != null) {
+            tr.seen = true
+            allFired = false // čas znova beží
+        }
         if (mode == "every" && tr.pending) {
             add(Marker(videoMs, t))
             finals[i] = t
@@ -143,6 +155,25 @@ class MarkerCollector {
                 if (add(m)) onFinal?.invoke(m)
             }
         }
+        // zastavenie všetkých časov, ktoré bežali (napr. LP aj PP) – nie už po prvom
+        if (!allFired && tracks.any { it.seen } && tracks.none { it.seen && it.pending }) {
+            allFired = true
+            onAllStopped?.invoke()
+        }
+    }
+
+    /** Zdroj ohlásil zastavenie časov – rozpracované časy sú finálne hneď (bez čakania na ustálenie). */
+    fun finalizeAll() {
+        if (mode == "off") return
+        for ((i, tr) in tracks.withIndex()) {
+            if (tr.pending) {
+                tr.pending = false
+                finals[i] = tr.text
+                val m = Marker(tr.changedVideoMs, tr.text)
+                if (add(m)) onFinal?.invoke(m)
+            }
+        }
+        allFired = true
     }
 
     /** Pridá značku, ak nejde o duplikát. @return true ak bola pridaná */

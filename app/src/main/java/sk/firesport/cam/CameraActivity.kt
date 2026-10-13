@@ -436,6 +436,11 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         val relayed = msg.startsWith(CamLink.RELAY)
         if (relayed && role != "slave") return
         val text = if (relayed) msg.substring(CamLink.RELAY.length) else msg
+        // priame ovládanie od hlavnej kamery (ručný štart / stop) – nezávisí od automatiky
+        if (!relayed && (msg == CamLink.CMD_REC || msg == CamLink.CMD_STOP)) {
+            if (role == "slave") mainHandler.post { if (msg == CamLink.CMD_REC) rec.startUser() else rec.stopUser() }
+            return
+        }
         if (!relayed && msg.startsWith("FSCAM:")) {
             OverlayState.onPacket(msg)
             return
@@ -454,10 +459,18 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
 
     override fun onCommand(cmd: String, arg: String) {
         mainHandler.post {
+            when (cmd) {
+                // udalosti časomiery – o nahrávaní rozhodne automatika (karta Automatika)
+                "timestart" -> rec.timeStarted(arg)
+                "timestop" -> rec.timeStopped(arg)
+            }
             if (!prefs.getBoolean("udp_commands", true)) return@post
             when (cmd) {
-                "start" -> rec.startUser()
-                "stop" -> rec.stopUser()
+                // UDP príkaz START = čas odštartoval (rovnako ako štart z rámca RW:)
+                "start" -> rec.timeStarted("príkaz ${OverlayState.cmdStart}")
+                // UDP príkaz STOP = podľa nastavenia: čas zastavil (dobeh) alebo zastaviť hneď
+                "stop" -> if (prefs.getString("cmd_stop_meaning", "event") == "now") rec.stopUser()
+                    else rec.timeStopped("príkaz ${OverlayState.cmdStop}")
                 "mark" -> rec.addMarker(arg)
                 "team" -> setTeam(arg, fromRemote = true)
                 "reset" -> resetAttempts(arg.ifEmpty { null }, fromRemote = true)
@@ -1400,14 +1413,15 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     private fun udpPort() = Prefs.int(prefs, "udp_port", 5000).takeIf { it in 1..65535 } ?: 5000
 
     /** Nahrávanie spustené na tomto telefóne (tlačidlo, hlasitosť, web) – hlavná kamera ho pošle ďalej. */
+    /** Ručné ovládanie (tlačidlo, hlasitosť, web) – hlavná kamera ním priamo riadi vedľajšie. */
     private fun userStart() {
         rec.startUser()
-        if (isMaster()) CamLink.send(udpPort(), OverlayState.cmdStart)
+        if (isMaster()) CamLink.send(udpPort(), CamLink.CMD_REC)
     }
 
     private fun userStop() {
         rec.stopUser()
-        if (isMaster()) CamLink.send(udpPort(), OverlayState.cmdStop)
+        if (isMaster()) CamLink.send(udpPort(), CamLink.CMD_STOP)
     }
 
     private fun userToggle() {
@@ -1539,7 +1553,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
                 val blink = (SystemClock.elapsedRealtime() / 500) % 2 == 0L
                 recLabel.text = (if (blink) "● " else "○ ") + "REC " +
                     formatDuration(rec.userElapsedMs() * 1_000_000L) + levelBar(rec.audioLevel) +
-                    (if (rec.collector.markers.isNotEmpty()) "  📍${rec.collector.markers.size}" else "")
+                    (if (rec.collector.markers.isNotEmpty()) "  📍${rec.collector.markers.size}" else "") +
+                    rec.autoStopRemainingMs().let { if (it > 0) "  ⏹ ${(it + 999) / 1000} s" else "" }
             }
             RecordingManager.State.PROCESSING -> {
                 recLabel.visibility = View.VISIBLE

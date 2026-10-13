@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Simulátor časomiery ESP32 (repozitár casomiera) – posiela binárne rámce RW: (40 bajtov)
-10× za sekundu cez UDP, rovnako ako časomiera. Na test Firesport Cam bez hardvéru.
+Simulátor časomiery ESP32 v1.2 (repozitár casomiera) – posiela binárne rámce RW: (40 bajtov)
+10× za sekundu cez UDP a udalosti START / STOP, rovnako ako časomiera. Na test Firesport Cam bez hardvéru.
 
   python3 casomiera_simulator.py                 # broadcast na port 5000, LP 12.41 / PP 12.87
   python3 casomiera_simulator.py --ip 192.168.4.2 --lp 15.20 --pp 16.05
@@ -42,6 +42,7 @@ def main():
     a.add_argument("--lp", type=float, default=12.41)
     a.add_argument("--pp", type=float, default=12.87)
     a.add_argument("--text", action="store_true", help="posielať $FT namiesto binárneho rámca")
+    a.add_argument("--no-events", action="store_true", help="neposielať udalosti START/STOP (časomiera v1.1)")
     o = a.parse_args()
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
@@ -56,11 +57,18 @@ def main():
         send(True, False, 0, 0, 0, 0); time.sleep(0.1)
     print("štart")
     t0 = time.time()
+    stop_sent = False
+    first = True
     while True:
         el = int((time.time() - t0) * 1000) // 10 * 10
         t1, s1 = (lp_ms, ST_STOP) if el >= lp_ms else (el, ST_RUN)
         t2, s2 = (pp_ms, ST_STOP) if el >= pp_ms else (el, ST_RUN)
         send(False, s1 == ST_RUN or s2 == ST_RUN, t1, s1, t2, s2)
+        # udalosti v1.2 – raz, hneď za rámcom s novým stavom
+        if first and not o.no_events:
+            s.sendto(b"START\r", (o.ip, o.port)); first = False
+        if s1 == ST_STOP and s2 == ST_STOP and not stop_sent and not o.no_events:
+            s.sendto(b"STOP\r", (o.ip, o.port)); stop_sent = True
         if s1 == ST_STOP and s2 == ST_STOP and el > pp_ms + 5000:
             break
         time.sleep(0.1)

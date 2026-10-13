@@ -116,7 +116,7 @@
             app:defaultValue="false"
             app:iconSpaceReserved="false"
             app:key="cas_protocol"
-            app:summary="Binárny rámec RW: (aj textový $FT) z časomiery ESP32 cez UDP. Ostatné UDP správy a príkazy fungujú ďalej."
+            app:summary="Binárny rámec RW: (aj textový $FT) z časomiery ESP32 cez UDP. Štart a zastavenie časov riadi nahrávanie podľa karty Automatika. Ostatné UDP správy a príkazy fungujú ďalej."
             app:title="Prijímať protokol časomiery" />
 
         <ListPreference
@@ -145,13 +145,6 @@
             app:key="cas_format"
             app:title="Formát času"
             app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreferenceCompat
-            app:defaultValue="true"
-            app:iconSpaceReserved="false"
-            app:key="cas_autostart"
-            app:summary="Keď časomiera odštartuje (nie odpočet), spustí sa nahrávanie – ako príkaz START"
-            app:title="Štart časomiery spustí nahrávanie" />
 
         <SwitchPreferenceCompat
             app:defaultValue="false"

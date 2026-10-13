@@ -1,29 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!--
+      Automatika: zdroje hlásia UDALOSTI (čas odštartoval / všetky časy zastavené),
+      tieto nastavenia určujú AKCIE (spustiť / zastaviť nahrávanie).
+    -->
+
     <PreferenceCategory
         app:iconSpaceReserved="false"
-        app:title="Riadenie nahrávania cez UDP">
+        app:title="Štart nahrávania">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="auto_start"
+            app:summary="Keď čas odštartuje (rámec RW: časomiery, udalosť START alebo UDP príkaz START), začne sa nahrávať"
+            app:title="Štart času spustí nahrávanie" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="auto_restart"
+            app:summary="Ak príde nový štart, kým nahrávanie ešte dobieha po zastavení času, pokus sa uloží a hneď začne nový"
+            app:title="Nový štart počas dobehu" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Zastavenie nahrávania">
+
+        <ListPreference
+            app:defaultValue="delay"
+            app:entries="@array/auto_stop_mode_entries"
+            app:entryValues="@array/auto_stop_mode_values"
+            app:iconSpaceReserved="false"
+            app:key="auto_stop_mode"
+            app:title="Keď sa zastavia všetky časy"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:defaultValue="5"
+            app:iconSpaceReserved="false"
+            app:key="auto_stop_after_final"
+            app:title="Dobeh – počet sekúnd po zastavení časov"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="auto_stop_infer"
+            app:summary="Pre zdroje bez udalosti STOP (napr. ESP-01 s textami): časy sú zastavené, keď sa všetky, ktoré bežali, ustália (podľa „Čas zastavený aspoň“)"
+            app:title="Rozpoznať zastavenie aj z ustálených časov" />
+
+        <EditTextPreference
+            app:defaultValue="0"
+            app:iconSpaceReserved="false"
+            app:key="auto_stop_after"
+            app:title="Maximálna dĺžka nahrávky v sekundách (0 = bez obmedzenia)"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="UDP príkazy">
 
         <SwitchPreferenceCompat
             app:defaultValue="true"
             app:iconSpaceReserved="false"
             app:key="udp_commands"
-            app:summary="Časomiera môže spustiť / zastaviť nahrávanie a pridať značku. Príkazy sa nezobrazia v overlayi."
+            app:summary="START, STOP, MARK, CLEAR, TEAM:, RESET, VERDIKT: z UDP a RS232. Príkazy sa nezobrazia v overlayi. Rámec RW: časomiery funguje aj bez nich."
             app:title="Prijímať príkazy" />
 
         <EditTextPreference
             app:defaultValue="START"
             app:iconSpaceReserved="false"
             app:key="cmd_start"
-            app:title="Príkaz na spustenie nahrávania"
+            app:title="Príkaz „čas odštartoval“"
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
             app:defaultValue="STOP"
             app:iconSpaceReserved="false"
             app:key="cmd_stop"
-            app:title="Príkaz na zastavenie nahrávania"
+            app:title="Príkaz „časy zastavené“"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="event"
+            app:entries="@array/cmd_stop_meaning_entries"
+            app:entryValues="@array/cmd_stop_meaning_values"
+            app:iconSpaceReserved="false"
+            app:key="cmd_stop_meaning"
+            app:title="Čo znamená príkaz STOP"
             app:useSimpleSummaryProvider="true" />
 
         <EditTextPreference
@@ -31,25 +99,6 @@
             app:iconSpaceReserved="false"
             app:key="cmd_mark"
             app:title="Príkaz na značku (aj MARK:text)"
-            app:useSimpleSummaryProvider="true" />
-    </PreferenceCategory>
-
-    <PreferenceCategory
-        app:iconSpaceReserved="false"
-        app:title="Automatické zastavenie">
-
-        <EditTextPreference
-            app:defaultValue="0"
-            app:iconSpaceReserved="false"
-            app:key="auto_stop_after_final"
-            app:title="Zastaviť X sekúnd po zastavení času (0 = vypnuté)"
-            app:useSimpleSummaryProvider="true" />
-
-        <EditTextPreference
-            app:defaultValue="0"
-            app:iconSpaceReserved="false"
-            app:key="auto_stop_after"
-            app:title="Maximálna dĺžka nahrávky v sekundách (0 = bez obmedzenia)"
             app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 

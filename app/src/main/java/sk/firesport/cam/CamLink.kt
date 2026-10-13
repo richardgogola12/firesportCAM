@@ -35,6 +35,10 @@ object CamLink {
         return out.toList()
     }
 
+    /** Ručný štart / stop na hlavnej kamere → vedľajšie kamery (nie udalosť časomiery). */
+    const val CMD_REC = "FSCAM:CMD:REC"
+    const val CMD_STOP = "FSCAM:CMD:STOP"
+
     /** Predpona textov z časomiery, ktoré hlavná kamera preposiela vedľajším. */
     const val RELAY = "FSCAM:TXT:"
 

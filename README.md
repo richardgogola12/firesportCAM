@@ -20,6 +20,12 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 3.0
+
+- **Poriadok v automatike:** zdroje (rámec `RW:`, udalosti `START`/`STOP` časomiery v1.2, UDP príkazy, ustálené časy) hlásia len udalosti „čas odštartoval“ / „všetky časy zastavené“; o nahrávaní rozhoduje karta Automatika. Každá udalosť sa v pokuse uplatní raz.
+- **Opravy:** dobeh X s funguje aj pre RW: (STOP časomiery v1.2 už nezastaví hneď), dobeh sa počíta až od zastavenia všetkých časov (nie po LP), nový štart počas dobehu uloží pokus a začne nový, ručné ovládanie hlavnej kamery riadi vedľajšie samostatným príkazom.
+- Nové nastavenia: „Keď sa zastavia všetky časy“ (po dobehu / hneď / nezastavovať), „Čo znamená príkaz STOP“, „Nový štart počas dobehu“, „Rozpoznať zastavenie z ustálených časov“; staré nastavenia sa prevedú automaticky.
+
 ## Novinky vo verzii 2.9
 
 - **Protokol časomiery ESP32** (repozitár `casomiera`): binárny rámec `RW:` aj text `$FT` cez UDP alebo RS232. LP → overlay 1, PP → overlay 2 vo formáte `5:58:98`; štart časomiery spustí nahrávanie, reset skryje čas. Všetky doterajšie spôsoby (ESP-01, UDP texty, príkazy) fungujú ďalej. Simulátor `tools/casomiera_simulator.py`.

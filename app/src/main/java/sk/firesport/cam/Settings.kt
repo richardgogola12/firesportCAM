@@ -27,8 +27,29 @@ object Prefs {
 
     /** Doplní chýbajúce predvolené hodnoty (existujúce neprepíše). */
     fun initDefaults(ctx: Context) {
+        val p0 = PreferenceManager.getDefaultSharedPreferences(ctx)
+        // stav pred doplnením predvolených hodnôt – pre migráciu automatiky (verzia 3.0)
+        val hadOldStop = p0.contains("auto_stop_after_final") && !p0.contains("auto_stop_mode")
+        val oldStopS = int(p0, "auto_stop_after_final", 0)
+        val hadCasAuto = p0.contains("cas_autostart")
+        val casAuto = p0.getBoolean("cas_autostart", true)
         for (x in XML_FILES) PreferenceManager.setDefaultValues(ctx, x, true)
         val p = PreferenceManager.getDefaultSharedPreferences(ctx)
+        if (!p.getBoolean("migrated_auto", false)) {
+            val ed = p.edit().putBoolean("migrated_auto", true)
+            if (hadOldStop) {
+                if (oldStopS > 0) {
+                    // „zastaviť X s po zastavení času“ – teraz po zastavení VŠETKÝCH časov
+                    ed.putString("auto_stop_mode", "delay").putString("cmd_stop_meaning", "event")
+                } else {
+                    // doteraz: bez automatického stopu, príkaz STOP zastavil hneď
+                    ed.putString("auto_stop_mode", "off").putString("cmd_stop_meaning", "now")
+                }
+            }
+            if (hadCasAuto) ed.putBoolean("auto_start", casAuto)
+            ed.remove("cas_autostart")
+            ed.apply()
+        }
         if (!p.getBoolean("migrated_v2", false)) {
             p.edit().putString("orientation", "auto").putBoolean("migrated_v2", true).apply()
         }

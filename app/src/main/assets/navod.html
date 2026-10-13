@@ -158,22 +158,41 @@ V stavovom riadku kamery je IP vysielača, od ktorého prišla posledná správa
 vtedy spolu zariadenia vôbec nekomunikujú. Najistejšie je pripojiť ESP na <b>hotspot telefónu</b>.</div>
 
 <h2 id="auto">6. Automatika: štart/stop, značky, replay</h2>
-<h3>Príkazy z časomiery</h3>
+<p>Automatika má jednoduché pravidlo: <b>zdroje hlásia udalosti</b>, <b>karta ⚡ Automatika rozhoduje o nahrávaní</b>.
+Udalosti sú len dve – <b>čas odštartoval</b> a <b>všetky časy zastavené</b>. Každá sa v jednom pokuse uplatní najviac raz,
+takže keď ju ohlási viac zdrojov naraz (napr. rámec RW: aj udalosť STOP časomiery), nič sa nezdvojí.</p>
 <table>
-  <tr><td><code>START</code></td><td>spustí nahrávanie</td></tr>
-  <tr><td><code>STOP</code></td><td>zastaví nahrávanie</td></tr>
+  <tr><th>Zdroj</th><th>Čas odštartoval</th><th>Všetky časy zastavené</th></tr>
+  <tr><td>Časomiera ESP32 – rámec <code>RW:</code></td><td>čas začne bežať (nie odpočet)</td><td>zastavené LP aj PP (alebo LP v režime iba LP), aj ručne RESETOM</td></tr>
+  <tr><td>Časomiera ESP32 v1.2 – udalosti</td><td><code>START</code></td><td><code>STOP</code></td></tr>
+  <tr><td>UDP / RS232 príkazy</td><td><code>START</code> (premenovateľné)</td><td><code>STOP</code> (podľa „Čo znamená príkaz STOP“)</td></tr>
+  <tr><td>Texty v overlayoch (napr. ESP-01)</td><td>–</td><td>všetky časy, ktoré bežali, sa ustálili</td></tr>
+</table>
+<h3>Štart nahrávania</h3>
+<ul>
+  <li><b>Štart času spustí nahrávanie</b> (predvolene áno).</li>
+  <li><b>Nový štart počas dobehu</b> – ak nový pokus odštartuje, kým predchádzajúci ešte dobieha, uloží sa a hneď začne nové nahrávanie.</li>
+</ul>
+<h3>Zastavenie nahrávania</h3>
+<ul>
+  <li><b>Keď sa zastavia všetky časy:</b> zastaviť <b>po dobehu</b> (predvolene 5 s), <b>hneď</b>, alebo <b>nezastavovať</b>.
+  Dobeh sa počíta až od zastavenia <b>všetkých</b> časov – keď padne LP a PP ešte beží, nahrávanie pokračuje.
+  Počas dobehu ukazuje kamera pri REC „⏹ 3 s“.</li>
+  <li><b>Rozpoznať zastavenie aj z ustálených časov</b> – pre zdroje, ktoré neposielajú STOP (ESP-01 s textami).</li>
+  <li><b>Maximálna dĺžka nahrávky</b> – poistka, ak by zastavenie neprišlo.</li>
+  <li>Ručné zastavenie (tlačidlo, hlasitosť, web) zastaví vždy hneď.</li>
+</ul>
+<h3>UDP príkazy</h3>
+<table>
+  <tr><td><code>START</code></td><td>čas odštartoval → štart nahrávania podľa nastavenia</td></tr>
+  <tr><td><code>STOP</code></td><td>predvolene: časy zastavené → zastavenie podľa nastavenia (dobeh); alebo „zastaviť hneď“</td></tr>
   <tr><td><code>MARK</code> alebo <code>MARK:text</code></td><td>pridá značku (s textom)</td></tr>
 </table>
-<p>Príkazy sa dajú premenovať v <b>⚙ → ⚡ Automatika</b> a nezobrazujú sa v overlayi.</p>
-<h3>Automatické zastavenie</h3>
-<ul>
-  <li><b>X sekúnd po zastavení času</b> – napr. 5 s po tom, čo sa čas v overlayi prestane meniť. Ideálne pre pokusy.</li>
-  <li><b>Maximálna dĺžka nahrávky</b> – poistka, ak by STOP neprišiel.</li>
-</ul>
+<p>Príkazy sa dajú premenovať a vypnúť (<b>Prijímať príkazy</b>); nezobrazujú sa v overlayi. Rámec RW: časomiery funguje aj pri vypnutých príkazoch.</p>
 <h3>Značky</h3>
-<p>Značka = čas vo videu + text. V režime <b>„Keď sa čas zastaví“</b> aplikácia sama rozpozná finálny čas
-(hodnota sa nemení aspoň 1 s) a vytvorí značku presne v momente, keď sa čas zastavil. Nulové časy (0.00)
-sa ignorujú. Značky sa ukladajú aj ako textový súbor vedľa videa – dajú sa zdieľať z galérie.</p>
+<p>Značka = čas vo videu + text. V režime <b>„Keď sa čas zastaví“</b> aplikácia rozpozná finálny čas
+(hodnota sa nemení aspoň 1 s) a vytvorí značku v momente, keď sa čas zastavil. Keď zdroj ohlási zastavenie
+(rámec RW:, STOP), značky sa vytvoria hneď. Nulové časy (0.00) sa ignorujú. Značky sa ukladajú aj ako textový súbor vedľa videa.</p>
 <h3>Replay po pokuse</h3>
 <p>Po zapnutí <b>Okamžité prehratie</b> sa po zastavení nahrávania video hneď otvorí v prehrávači –
 napr. 3 s pred prvou značkou a v spomalení 0,5×.</p>
@@ -266,7 +285,7 @@ a jeho textový variant <code>$FT</code>). Doterajšie funkcie ostávajú – os
   Overlaye aj formát (alebo sekundy 358.98) sa dajú zmeniť. Predpona a prípona overlayu (napr. „LP “) sa pridá ako doteraz.</li>
 </ol>
 <ul>
-  <li><b>Štart časomiery spustí nahrávanie</b> (ako príkaz START, nie pri odpočte). Po zastavení sa značky, automatický stop, výsledok pokusu a tabuľka vytvoria ako doteraz.</li>
+  <li>Štart a zastavenie časov idú do <b>⚡ Automatiky</b> ako udalosti „čas odštartoval“ / „všetky časy zastavené“ (odpočet nie) – nahrávanie sa spustí a po dobehu zastaví podľa jej nastavení. Udalosti <code>START</code>/<code>STOP</code> časomiery v1.2 sa nezdvoja.</li>
   <li><b>Reset časomiery</b> čas v obraze skryje (podľa „Po vymazaní“) – alebo zapni „Zobrazovať 0:00:00 aj v pripravenosti“.</li>
   <li>Režim <b>iba LP</b>: čas je len v overlayi 1. <b>Odpočet</b>: zostávajúci čas je v overlayi 1.</li>
   <li>Hlavná kamera prepošle čas aj vedľajším kamerám (ak je zapnuté „Posielať čas vedľajším kamerám“).</li>
@@ -357,9 +376,10 @@ Overlaye si nastav na vedľajšej rovnako ako na hlavnej. Ak správa príde aj p
   <li>Všetky telefóny pripoj do jednej siete a nastav rovnaký UDP port.</li>
   <li>Na jednom v <b>⚙ → 🎥 Kamery a OBS</b> nastav úlohu <b>Hlavná</b>, na ostatných <b>Vedľajšia</b>.
       Každému daj názov (Štart, Terče, Bok…).</li>
-  <li>Keď na hlavnom spustíš / zastavíš nahrávanie alebo zmeníš družstvo, urobia to aj ostatné telefóny.</li>
+  <li>Keď na hlavnom ručne spustíš / zastavíš nahrávanie alebo zmeníš družstvo, urobia to aj ostatné telefóny
+      (priamy príkaz – nezávisí od automatiky vedľajšej kamery).</li>
 </ol>
-<p>Ak časomiera posiela <code>START</code>/<code>STOP</code>, spustí všetky telefóny sama – hlavný vtedy netreba.
+<p>Udalosti časomiery (štart, zastavenie časov) dostane každý telefón priamo alebo cez hlavnú kameru a každý sa zariadi podľa svojej Automatiky.
 Videá z iných telefónov prenesieš do jedného cez <b>Galéria → Importovať videá</b> (označ video aj jeho súbory
 <code>.info.json</code> a <code>.markers.txt</code>) a porovnáš ich vedľa seba.</p>
 <h3>Živé vysielanie do OBS</h3>
@@ -397,7 +417,7 @@ takže overlay s časom majú aj ony – aj keď ich ESP-01 nevidí. Vedľajšie
   <li>Názov súťaže zadaný, správny profil načítaný.</li>
   <li>Časomiera posiela na správnu IP a port – v stavovom riadku vidno „posledná správa“.</li>
   <li>Antiflicker 50 Hz pri umelom osvetlení, 60 fps pre spomalené zábery.</li>
-  <li>Automatika: príkazy START/STOP alebo „zastaviť X s po zastavení času“, replay podľa potreby.</li>
+  <li>Automatika: štart času spustí nahrávanie, zastavenie všetkých časov ho zastaví po dobehu (napr. 5 s), replay podľa potreby.</li>
   <li>Skúšobný pokus – skontroluj video, overlaye, značky a zvuk.</li>
 </ol>
 

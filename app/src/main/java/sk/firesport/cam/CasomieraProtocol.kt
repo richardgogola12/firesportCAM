@@ -16,7 +16,9 @@ import java.util.Locale
  *
  * LP sa zobrazí v overlayi 1, PP v overlayi 2 (nastaviteľné), vo formáte min:sek:stotiny (5:58:98).
  * Zmeny času idú rovnakou cestou ako texty z UDP, takže značky, automatický stop,
- * výsledok pokusu aj výsledková tabuľka fungujú ako doteraz. Pri štarte sa pošle START.
+ * výsledok pokusu aj výsledková tabuľka fungujú ako doteraz.
+ * Udalosti „čas odštartoval“ / „všetky časy zastavené“ idú do automatiky (karta Automatika),
+ * ktorá rozhodne o spustení a zastavení nahrávania.
  */
 object CasomieraDecoder {
     const val FRAME_LEN = 40
@@ -33,11 +35,11 @@ object CasomieraDecoder {
     @Volatile var ppIndex = 1
     @Volatile var format = "min"
     @Volatile var showReady = false
-    @Volatile var autoStart = true
 
     // stav
     private var wasRunning = false
     private var wasReady = false
+    private var wasStopped = false
     private var cleared = BooleanArray(TEXT_OVERLAYS)
     private var lastText = arrayOfNulls<String>(TEXT_OVERLAYS)
     @Volatile var lastSummary = ""
@@ -51,7 +53,6 @@ object CasomieraDecoder {
         ppIndex = (Prefs.int(p, "cas_pp_overlay", 2) - 1).coerceIn(0, TEXT_OVERLAYS - 1)
         format = Prefs.str(p, "cas_format", "min")
         showReady = p.getBoolean("cas_show_ready", false)
-        autoStart = p.getBoolean("cas_autostart", true)
     }
 
     /** 358980 ms → "5:58:98" (alebo "358.98"). Stotiny sa orezávajú, nie zaokrúhľujú – ako na časomiere. */
@@ -130,7 +131,9 @@ object CasomieraDecoder {
         val countdown = mode == 2
         val two = channels >= 2 && !countdown
         val running = s1 == ST_RUN || (two && s2 == ST_RUN)
-        update(ready, running, countdown, formatMs(t1), if (two) formatMs(t2) else null)
+        fun stopped(st: Int) = st == ST_STOP || st == ST_FINISH
+        val allStopped = !ready && !running && stopped(s1) && (!two || stopped(s2))
+        update(ready, running, allStopped, countdown, formatMs(t1), if (two) formatMs(t2) else null)
     }
 
     /** Textový variant $FT,… */
@@ -147,11 +150,11 @@ object CasomieraDecoder {
         val lp = if (p[4] == "-") mainMs else ms(p[4]) ?: mainMs
         val pp = if (p[5] == "-") mainMs else ms(p[5]) ?: mainMs
         val countdown = mode == 3
-        update(st == 'R', st == 'B', countdown, formatMs(if (countdown) mainMs else lp), if (mode == 1) formatMs(pp) else null)
+        update(st == 'R', st == 'B', st == 'S', countdown, formatMs(if (countdown) mainMs else lp), if (mode == 1) formatMs(pp) else null)
         return true
     }
 
-    private fun update(ready: Boolean, running: Boolean, countdown: Boolean, lp: String, pp: String?) {
+    private fun update(ready: Boolean, running: Boolean, allStopped: Boolean, countdown: Boolean, lp: String, pp: String?) {
         lastAt = android.os.SystemClock.elapsedRealtime()
         lastSummary = when {
             ready -> "časomiera pripravená"
@@ -169,21 +172,25 @@ object CasomieraDecoder {
                 lastText.fill(null)
             }
         }
-        // štart (nie odpočet) → START nahrávania, rovnako ako príkaz z UDP
-        if (running && !wasRunning && !countdown && autoStart && OverlayState.commandsEnabled) {
-            OverlayState.listener?.onCommand("start", "")
-        }
+        // udalosti pre automatiku (odpočet nie – to je čas na prípravu, nie pokus)
+        val fireStart = !countdown && running && !wasRunning
+        val fireStop = !countdown && allStopped && !wasStopped
         wasReady = ready
         wasRunning = running
-        if (ready && !showReady) return
+        wasStopped = allStopped
 
-        put(lpIndex, lp)
-        if (pp != null && ppIndex != lpIndex) put(ppIndex, pp)
-        else if (pp == null && ppIndex != lpIndex && !cleared[ppIndex]) {
-            OverlayState.clear(ppIndex)
-            lastText[ppIndex] = null
-            cleared[ppIndex] = true
+        // najprv časy (aby značky a výsledok mali posledný čas), potom udalosti
+        if (!(ready && !showReady)) {
+            put(lpIndex, lp)
+            if (pp != null && ppIndex != lpIndex) put(ppIndex, pp)
+            else if (pp == null && ppIndex != lpIndex && !cleared[ppIndex]) {
+                OverlayState.clear(ppIndex)
+                lastText[ppIndex] = null
+                cleared[ppIndex] = true
+            }
         }
+        if (fireStart) OverlayState.listener?.onCommand("timestart", "časomiera RW:")
+        if (fireStop) OverlayState.listener?.onCommand("timestop", "časomiera RW:")
     }
 
     private fun put(i: Int, text: String) {
