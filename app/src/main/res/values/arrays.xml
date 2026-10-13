@@ -350,6 +350,7 @@
         <item>CR (\\r)</item>
         <item>Vlastný oddeľovač</item>
         <item>Prestávka v dátach</item>
+        <item>Protokol časomiery ESP32 (rámec RW:)</item>
     </string-array>
     <string-array name="rs_framing_values">
         <item>any</item>
@@ -357,6 +358,7 @@
         <item>cr</item>
         <item>custom</item>
         <item>gap</item>
+        <item>casomiera</item>
     </string-array>
 
     <string-array name="rs_encoding_entries">
@@ -398,4 +400,32 @@
         <item>crlf</item>
     </string-array>
 
+    <string-array name="cas_overlay_entries">
+        <item>Overlay 1</item>
+        <item>Overlay 2</item>
+        <item>Overlay 3</item>
+    </string-array>
+    <string-array name="cas_overlay_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+    <string-array name="cas_format_entries">
+        <item>min:sek:stotiny (5:58:98)</item>
+        <item>sekundy (358.98)</item>
+    </string-array>
+    <string-array name="cas_format_values">
+        <item>min</item>
+        <item>sec</item>
+    </string-array>
+    <string-array name="rs_proto_udp_entries">
+        <item>Rámec RW: bez zmeny (pre ďalšie telefóny a LED displej)</item>
+        <item>Text $FT (čitateľný, ako udp_text=1)</item>
+        <item>Len časy „LP;PP“ vo zvolenom formáte</item>
+    </string-array>
+    <string-array name="rs_proto_udp_values">
+        <item>raw</item>
+        <item>ft</item>
+        <item>times</item>
+    </string-array>
 </resources>

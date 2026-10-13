@@ -280,7 +280,9 @@ object SerialHub {
         val udpPort: Int,
         val udpPrefix: String,
         val udpSuffix: String,
-        val udpCharset: String
+        val udpCharset: String,
+        /** Protokol časomiery: čo poslať do UDP – raw = rámec RW: bez zmeny, ft = text $FT, times = „LP;PP“ */
+        val protoUdp: String
     ) {
         companion object {
             fun load(p: SharedPreferences) = Config(
@@ -322,7 +324,8 @@ object SerialHub {
                 udpPort = Prefs.int(p, "rs_udp_port", 5000).coerceIn(1, 65535),
                 udpPrefix = p.getString("rs_udp_prefix", "") ?: "",
                 udpSuffix = Prefs.str(p, "rs_udp_suffix", "none"),
-                udpCharset = Prefs.str(p, "rs_udp_encoding", "UTF-8")
+                udpCharset = Prefs.str(p, "rs_udp_encoding", "UTF-8"),
+                protoUdp = Prefs.str(p, "rs_proto_udp", "raw")
             )
         }
     }
@@ -564,6 +567,10 @@ object SerialHub {
                     }
                     continue
                 }
+                if (cfg.framing == "casomiera") {
+                    feedProto(buf, n)
+                    continue
+                }
                 if (cfg.framing == "gap" && line.size() > 0 && now - lastByteAt >= cfg.gapMs * 1_000_000L) emit(line)
                 lastByteAt = now
                 for (i in 0 until n) {
@@ -585,6 +592,82 @@ object SerialHub {
                     }
                     line.write(b.toInt())
                     if (line.size() >= cfg.maxLen) emit(line)
+                }
+            }
+        }
+
+        // ---------------- protokol časomiery ESP32 (binárny rámec RW:, 40 bajtov)
+
+        private val pb = ByteArray(8192)
+        private var pn = 0
+
+        private fun feedProto(buf: ByteArray, n: Int) {
+            if (pn + n > pb.size) {
+                // ochrana pred zahltením nezmyselnými dátami – ponechať koniec
+                val keep = minOf(pn, 64)
+                System.arraycopy(pb, pn - keep, pb, 0, keep)
+                pn = keep
+                if (n > pb.size - pn) return
+            }
+            System.arraycopy(buf, 0, pb, pn, n)
+            pn += n
+            var i = 0
+            while (true) {
+                var sIdx = -1
+                var k = i
+                while (k + 2 < pn) {
+                    if (pb[k] == 'R'.code.toByte() && pb[k + 1] == 'W'.code.toByte() && pb[k + 2] == ':'.code.toByte()) { sIdx = k; break }
+                    k++
+                }
+                if (sIdx < 0) {
+                    i = maxOf(i, pn - 2)
+                    break
+                }
+                if (pn - sIdx < CasomieraDecoder.FRAME_MIN) {
+                    i = sIdx
+                    break
+                }
+                if (CasomieraDecoder.isFrame(pb, sIdx, CasomieraDecoder.FRAME_MIN)) {
+                    val frame = ByteArray(CasomieraDecoder.FRAME_LEN)
+                    System.arraycopy(pb, sIdx, frame, 0, CasomieraDecoder.FRAME_MIN)
+                    frame[CasomieraDecoder.FRAME_LEN - 1] = 0x0D
+                    onFrame(frame)
+                    i = sIdx + CasomieraDecoder.FRAME_MIN
+                } else {
+                    i = sIdx + 3 // príkaz RW:RST / RW:CHNG – preskočiť
+                }
+            }
+            if (i > 0) {
+                System.arraycopy(pb, i, pb, 0, pn - i)
+                pn -= i
+            }
+        }
+
+        /** Jeden rámec časomiery → UDP (podľa nastavenia) + táto aplikácia. */
+        private fun onFrame(frame: ByteArray) {
+            SerialHub.rxCount.incrementAndGet()
+            val ft = CasomieraDecoder.toFt(frame, 0, frame.size) ?: return
+            SerialHub.setLast(ft)
+            if (cfg.udpEnabled) {
+                val data = when (cfg.protoUdp) {
+                    "ft" -> (ft + "\r\n").toByteArray(Charsets.US_ASCII)
+                    "times" -> {
+                        val p = ft.substringBefore('*').split(',')
+                        fun f(x: String) = if (x == "-") "" else CasomieraDecoder.formatMs(Math.round((x.toDoubleOrNull() ?: 0.0) * 1000))
+                        (cfg.udpPrefix + f(p.getOrElse(4) { "-" }) + ";" + f(p.getOrElse(5) { "-" }) + suffix).toByteArray(outCharset)
+                    }
+                    else -> frame
+                }
+                if (!udpQueue.offer(data)) {
+                    udpQueue.poll()
+                    udpQueue.offer(data)
+                    SerialHub.droppedCount.incrementAndGet()
+                }
+            }
+            if (cfg.local) {
+                if (!localQueue.offer(ft)) {
+                    localQueue.poll()
+                    localQueue.offer(ft)
                 }
             }
         }

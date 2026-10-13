@@ -20,6 +20,10 @@ Výsledok: `app/build/outputs/apk/debug/app-debug.apk`.
 
 Požiadavky: Android 8.0+ (API 26).
 
+## Novinky vo verzii 2.9
+
+- **Protokol časomiery ESP32** (repozitár `casomiera`): binárny rámec `RW:` aj text `$FT` cez UDP alebo RS232. LP → overlay 1, PP → overlay 2 vo formáte `5:58:98`; štart časomiery spustí nahrávanie, reset skryje čas. Všetky doterajšie spôsoby (ESP-01, UDP texty, príkazy) fungujú ďalej. Simulátor `tools/casomiera_simulator.py`.
+
 ## Novinky vo verzii 2.8
 
 - **RS232 cez USB OTG → UDP** – CH340, CP210x, FTDI, PL2303, CDC; všetky parametre linky (rýchlosť, bity, parita, stop bity, riadenie toku, DTR/RTS), koniec správy (CR/LF, vlastný oddeľovač, prestávka), zoznam ignorovaných textov, UDP broadcast alebo IP adresy, predpona/koniec/kódovanie. Samostatné vlákna, 250+ správ/s, test výkonu.

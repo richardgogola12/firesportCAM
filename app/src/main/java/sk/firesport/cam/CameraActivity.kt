@@ -316,7 +316,7 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
     override fun onSharedPreferenceChanged(sp: SharedPreferences, key: String?) {
         val k = key ?: ""
         if (key == null || k.startsWith("ov") || k.startsWith("udp_") || k.startsWith("logo") ||
-            k.startsWith("cmd_") || k == "event_name" || k == "profile_name" ||
+            k.startsWith("cmd_") || k.startsWith("cas_") || k == "event_name" || k == "profile_name" ||
             k == "team_name" || k == "camera_name" || k == "clear_mode"
         ) OverlayState.load(sp)
         if (key == null || k == "team_name" || k == "event_name" || k == "attempt_numbering" || k.startsWith("attempt_reset")) updateTeamLabel()
@@ -403,7 +403,16 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
             onMessage = { msg, from -> handleUdp(msg, from, port) },
             onStatus = { s -> udpStatus = s },
             announcePort = if (prefs.getBoolean("udp_announce", true)) Prefs.int(prefs, "udp_announce_port", 5001) else 0,
-            deviceName = Prefs.str(prefs, "camera_name", "")
+            deviceName = Prefs.str(prefs, "camera_name", ""),
+            onRaw = { d, o, l, from ->
+                val ok = CasomieraDecoder.onPacket(d, o, l, from)
+                // hlavná kamera prepošle čas časomiery vedľajším (ako text $FT)
+                if (ok && isMaster() && prefs.getBoolean("relay_texts", true)) {
+                    val ft = CasomieraDecoder.toFt(d, o, l) ?: String(d, o, l, Charsets.US_ASCII).trim()
+                    CamLink.send(port, CamLink.RELAY + ft, times = 1)
+                }
+                ok
+            }
         ).also { it.start() }
     }
 
@@ -438,6 +447,8 @@ class CameraActivity : AppCompatActivity(), SharedPreferences.OnSharedPreference
         lastUdpRelayed = relayed
         if (from.isNotEmpty() && !relayed) OverlayState.lastSender = from
         if (role == "master" && prefs.getBoolean("relay_texts", true)) CamLink.send(port, CamLink.RELAY + text, times = 1)
+        // protokol časomiery ESP32 v textovej podobe ($FT,…) – z RS232 mostu, od hlavnej kamery alebo z UDP
+        if (text.startsWith("\$FT,") && CasomieraDecoder.onFt(text)) return
         OverlayState.onPacket(text)
     }
 

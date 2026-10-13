@@ -131,9 +131,17 @@ object Verdicts {
 /** Práca s časmi v texte ("L 16.84" → 16.84). */
 object Times {
     private val re = Regex("(\\d+)[.,:](\\d+)")
+    /** min:sek:stotiny z časomiery ESP32, napr. 5:58:98 */
+    private val reMin = Regex("(\\d+):(\\d{1,2}):(\\d{1,2})")
 
     fun parse(text: String?): Double? {
         if (text.isNullOrBlank()) return null
+        reMin.find(text)?.let { m ->
+            val min = m.groupValues[1].toLongOrNull() ?: 0L
+            val sec = m.groupValues[2].toLongOrNull() ?: 0L
+            val cs = m.groupValues[3].padEnd(2, '0').toLongOrNull() ?: 0L
+            return (min * 6000 + sec * 100 + cs) / 100.0
+        }
         val m = re.find(text) ?: return text.trim().toDoubleOrNull()
         return "${m.groupValues[1]}.${m.groupValues[2]}".toDoubleOrNull()
     }

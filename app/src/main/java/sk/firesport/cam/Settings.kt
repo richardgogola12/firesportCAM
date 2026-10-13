@@ -203,6 +203,7 @@ object OverlayState {
         logo = LogoStyle.load(p)
         loadLogoBitmap()
         udpMode = p.getString("udp_mode", "same") ?: "same"
+        CasomieraDecoder.load(p)
         separator = p.getString("udp_separator", ";") ?: ";"
         trim = p.getBoolean("udp_trim", true)
         timeoutMs = Prefs.int(p, "udp_timeout", 0) * 1000L
@@ -385,6 +386,9 @@ object OverlayState {
     }
 
     private fun matches(m: String, cmd: String) = cmd.isNotEmpty() && m.equals(cmd, ignoreCase = true)
+
+    /** Čas z protokolu časomiery – rovnaká cesta ako text z UDP (značky, výsledok, automatika). */
+    fun protocolText(i: Int, text: String) = setAndNotify(i, text)
 
     private fun setAndNotify(i: Int, text: String) {
         setText(i, text)

@@ -220,6 +220,15 @@
             app:title="UDP port cieľa"
             app:useSimpleSummaryProvider="true" />
 
+        <ListPreference
+            app:defaultValue="raw"
+            app:entries="@array/rs_proto_udp_entries"
+            app:entryValues="@array/rs_proto_udp_values"
+            app:iconSpaceReserved="false"
+            app:key="rs_proto_udp"
+            app:title="Protokol časomiery: čo poslať do UDP"
+            app:useSimpleSummaryProvider="true" />
+
         <EditTextPreference
             app:defaultValue=""
             app:iconSpaceReserved="false"

@@ -44,6 +44,7 @@
   <li><a href="#dialkove">Diaľkové ovládanie</a></li>
   <li><a href="#profily">Profily nastavení</a></li>
   <li><a href="#rs232">RS232 cez USB → UDP</a></li>
+  <li><a href="#casomiera32">Časomiera ESP32 (protokol RW:)</a></li>
   <li><a href="#pozadie">Nahrávanie na pozadí, batéria a miesto</a></li>
   <li><a href="#druzstva">Družstvá, výsledky a medzičasy</a></li>
   <li><a href="#kamery">Viac kamier a OBS</a></li>
@@ -254,6 +255,25 @@ a neskôr ich jedným ťuknutím načítaš. Názov aktívneho profilu je v stav
 Tlačidlo <b>⚡ Test výkonu</b> pošle 250 správ/s počas 10 s celou cestou – prijaté aj odoslané musia ukázať 250/s, zahodené 0.
 Pri vysokom toku je spoľahlivejšie posielať na konkrétne IP adresy ako broadcast (broadcast cez Wi-Fi ide najpomalšou rýchlosťou).</p>
 <p>Most beží, kým je aplikácia spustená (aj v nastaveniach a galérii). Stav a počet správ za sekundu je v stavovom riadku kamery a v karte RS232.</p>
+
+<h2 id="casomiera32">Časomiera ESP32 (protokol RW:)</h2>
+<p>Aplikácia vie čítať aj protokol časomiery ESP32 (binárny rámec <code>RW:</code>, 10× za sekundu, zhodný s originálnou časomierou,
+a jeho textový variant <code>$FT</code>). Doterajšie funkcie ostávajú – ostatné UDP správy, príkazy aj ESP-01 fungujú ďalej súčasne.</p>
+<ol>
+  <li>Telefón pripoj na Wi-Fi časomiery <b>Casomiera</b> (heslo <code>hasici123</code>) – časomiera posiela rámce každému pripojenému zariadeniu na port 5000.</li>
+  <li>V <b>⚙ → 📡 UDP → Časomiera ESP32</b> zapni <b>Prijímať protokol časomiery</b>.</li>
+  <li>Čas <b>LP</b> sa zobrazí v <b>overlayi 1</b>, čas <b>PP</b> v <b>overlayi 2</b> vo formáte <b>5:58:98</b> (minúty:sekundy:stotiny).
+  Overlaye aj formát (alebo sekundy 358.98) sa dajú zmeniť. Predpona a prípona overlayu (napr. „LP “) sa pridá ako doteraz.</li>
+</ol>
+<ul>
+  <li><b>Štart časomiery spustí nahrávanie</b> (ako príkaz START, nie pri odpočte). Po zastavení sa značky, automatický stop, výsledok pokusu a tabuľka vytvoria ako doteraz.</li>
+  <li><b>Reset časomiery</b> čas v obraze skryje (podľa „Po vymazaní“) – alebo zapni „Zobrazovať 0:00:00 aj v pripravenosti“.</li>
+  <li>Režim <b>iba LP</b>: čas je len v overlayi 1. <b>Odpočet</b>: zostávajúci čas je v overlayi 1.</li>
+  <li>Hlavná kamera prepošle čas aj vedľajším kamerám (ak je zapnuté „Posielať čas vedľajším kamerám“).</li>
+  <li><b>Cez RS232:</b> v karte <b>🔌 RS232</b> nastav <b>Koniec správy: Protokol časomiery ESP32</b> a rýchlosť 9600 Bd (RS232 časomiery).
+  Do UDP sa môže posielať rámec bez zmeny, text <code>$FT</code> alebo len časy „LP;PP“.</li>
+</ul>
+<p>Test bez časomiery: na PC spusti <code>tools/casomiera_simulator.py</code> – posiela rámce LP 12.41 / PP 12.87 na port 5000.</p>
 
 <h2 id="pozadie">13. Nahrávanie na pozadí, batéria a miesto</h2>
 <ul>

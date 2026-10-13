@@ -27,7 +27,9 @@ class UdpReceiver(
     private val onMessage: (String, String) -> Unit,
     private val onStatus: (String) -> Unit,
     private val announcePort: Int = 0,
-    private val deviceName: String = ""
+    private val deviceName: String = "",
+    /** Binárne správy (protokol časomiery) – true = spracované, ďalej sa nedekóduje ako text. */
+    private val onRaw: ((ByteArray, Int, Int, String) -> Boolean)? = null
 ) {
     private val appCtx = ctx.applicationContext
     @Volatile private var running = false
@@ -92,8 +94,9 @@ class UdpReceiver(
                     s.receive(p)
                     // vlastný broadcast z mostu RS232 → UDP sa tu druhýkrát nespracuje
                     if (p.port == SerialHub.localUdpPort && isOwnAddress(p.address)) continue
-                    val text = String(p.data, p.offset, p.length, charset)
                     val from = p.address?.hostAddress ?: ""
+                    if (onRaw != null && onRaw.invoke(p.data, p.offset, p.length, from)) continue
+                    val text = String(p.data, p.offset, p.length, charset)
                     if (text.startsWith("FSCAM:DISCOVER")) {
                         // odpoveď na vyhľadávanie – vysielač sa dozvie IP a port telefónu
                         try {

@@ -107,4 +107,57 @@
             app:title="Port, na ktorý sa ohlasuje (počúva na ňom vysielač)"
             app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="Časomiera ESP32 (protokol RW:)">
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="cas_protocol"
+            app:summary="Binárny rámec RW: (aj textový $FT) z časomiery ESP32 cez UDP. Ostatné UDP správy a príkazy fungujú ďalej."
+            app:title="Prijímať protokol časomiery" />
+
+        <ListPreference
+            app:defaultValue="1"
+            app:entries="@array/cas_overlay_entries"
+            app:entryValues="@array/cas_overlay_values"
+            app:iconSpaceReserved="false"
+            app:key="cas_lp_overlay"
+            app:title="Čas LP (ľavý terč) zobraziť v"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="2"
+            app:entries="@array/cas_overlay_entries"
+            app:entryValues="@array/cas_overlay_values"
+            app:iconSpaceReserved="false"
+            app:key="cas_pp_overlay"
+            app:title="Čas PP (pravý terč) zobraziť v"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:defaultValue="min"
+            app:entries="@array/cas_format_entries"
+            app:entryValues="@array/cas_format_values"
+            app:iconSpaceReserved="false"
+            app:key="cas_format"
+            app:title="Formát času"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="true"
+            app:iconSpaceReserved="false"
+            app:key="cas_autostart"
+            app:summary="Keď časomiera odštartuje (nie odpočet), spustí sa nahrávanie – ako príkaz START"
+            app:title="Štart časomiery spustí nahrávanie" />
+
+        <SwitchPreferenceCompat
+            app:defaultValue="false"
+            app:iconSpaceReserved="false"
+            app:key="cas_show_ready"
+            app:summary="Vypnuté: po resete časomiery sa čas skryje (podľa „Po vymazaní“), kým neodštartuje"
+            app:title="Zobrazovať 0:00:00 aj v pripravenosti" />
+    </PreferenceCategory>
 </PreferenceScreen>
